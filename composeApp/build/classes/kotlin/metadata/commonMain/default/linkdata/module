@@ -1,0 +1,2 @@
+
+<composeApp_commonMain>:$heula.composeapp.generated.resources:id.heula.data.db:id.heula.data.db.composeApp:id.heula.data.repository:id.heula.di:id.heula.domain.model:id.heula.domain.usecase:%id.heula.presentation.component.timer:"id.heula.presentation.component.ui: id.heula.presentation.navigation:$id.heula.presentation.screen.history:!id.heula.presentation.screen.home:'id.heula.presentation.screen.onboarding:$id.heula.presentation.screen.profile:"id.heula.presentation.screen.stats:id.heula.presentation.store:id.heula.presentation.theme
