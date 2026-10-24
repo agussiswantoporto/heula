@@ -15,22 +15,31 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import heula.composeapp.generated.resources.Res
+import heula.composeapp.generated.resources.ic_logo
+import org.jetbrains.compose.resources.painterResource
 import id.heula.presentation.screen.history.HistoryScreen
 import id.heula.presentation.screen.home.HomeScreen
 import id.heula.presentation.screen.onboarding.OnboardingScreen
 import id.heula.presentation.screen.profile.ProfileScreen
+import id.heula.presentation.screen.splash.SplashScreen
 import id.heula.presentation.screen.stats.StatsScreen
 import id.heula.presentation.store.AppStore
 import id.heula.presentation.theme.BrandPrimary
@@ -45,23 +54,36 @@ enum class ScreenTab {
 @Composable
 fun App(
     store: AppStore,
+    enableSplashScreen: Boolean = true,
 ) {
     val settings by store.settings.collectAsState()
     val s = getStrings(settings.language)
     var currentTab by remember { mutableStateOf(ScreenTab.HOME) }
     var isOnboardingMode by remember(settings.onboarded) { mutableStateOf(!settings.onboarded) }
+    var isSplashVisible by remember { mutableStateOf(enableSplashScreen) }
 
     HeulaTheme(userTheme = settings.theme) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
         ) {
-            if (isOnboardingMode) {
-                OnboardingScreen(
-                    store = store,
-                    onFinish = { isOnboardingMode = false },
-                )
-            } else {
+            AnimatedContent(
+                targetState = isSplashVisible,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
+                },
+                label = "AppScreenTransition"
+            ) { showSplash ->
+                if (showSplash) {
+                    SplashScreen(
+                        onSplashFinished = { isSplashVisible = false }
+                    )
+                } else if (isOnboardingMode) {
+                    OnboardingScreen(
+                        store = store,
+                        onFinish = { isOnboardingMode = false },
+                    )
+                } else {
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val isWide = maxWidth >= 768.dp
 
@@ -76,11 +98,13 @@ fun App(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier.padding(vertical = 20.dp),
                                     ) {
-                                        Text(
-                                            text = "Heula",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 20.sp,
-                                            color = BrandPrimary,
+                                        Image(
+                                            painter = painterResource(Res.drawable.ic_logo),
+                                            contentDescription = "Heula",
+                                            contentScale = ContentScale.Fit,
+                                            modifier = Modifier
+                                                .height(80.dp)
+                                                .padding(horizontal = 8.dp)
                                         )
                                     }
                                 }
@@ -178,6 +202,7 @@ fun App(
             }
         }
     }
+}
 }
 
 private data class TabItem(

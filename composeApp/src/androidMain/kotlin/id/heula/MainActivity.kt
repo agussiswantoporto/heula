@@ -12,6 +12,7 @@ import org.koin.mp.KoinPlatformTools
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(android.R.style.Theme_Material_NoActionBar)
         super.onCreate(savedInstanceState)
 
         if (KoinPlatformTools.defaultContext().getOrNull() == null) {
@@ -24,7 +25,7 @@ class MainActivity : ComponentActivity() {
         val store = KoinPlatformTools.defaultContext().get().get<AppStore>()
 
         setContent {
-            App(store = store)
+            App(store = store, enableSplashScreen = true)
         }
     }
 }

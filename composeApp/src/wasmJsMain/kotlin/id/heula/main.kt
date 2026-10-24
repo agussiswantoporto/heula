@@ -19,6 +19,6 @@ fun main() {
     val store = KoinPlatformTools.defaultContext().get().get<AppStore>()
 
     ComposeViewport(document.body!!) {
-        App(store = store)
+        App(store = store, enableSplashScreen = false)
     }
 }

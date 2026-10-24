@@ -14,5 +14,5 @@ fun MainViewController() = ComposeUIViewController {
         }
     }
     val store = KoinPlatformTools.defaultContext().get().get<AppStore>()
-    App(store = store)
+    App(store = store, enableSplashScreen = true)
 }

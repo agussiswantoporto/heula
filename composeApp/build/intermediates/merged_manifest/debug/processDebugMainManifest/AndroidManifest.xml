@@ -23,6 +23,7 @@
         <activity
             android:name="id.heula.MainActivity"
             android:exported="true"
+            android:theme="@style/Theme.Heula.Splash"
             android:windowSoftInputMode="adjustResize" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "id.heula.composeApp-debug-52:/drawable_splash_background.xml.flat",
+        "source": "id.heula.composeApp-androidMain-54:/drawable/splash_background.xml"
+    },
+    {
+        "merged": "id.heula.composeApp-debug-52:/drawable_ic_splash_logo.xml.flat",
+        "source": "id.heula.composeApp-androidMain-54:/drawable/ic_splash_logo.xml"
+    }
+]

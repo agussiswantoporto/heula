@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Rounded Rectangle Background -->
+    <path
+        android:fillColor="#34C759"
+        android:pathData="M 28,8 L 68,8 A 20,20 0 0,1 88,28 L 88,68 A 20,20 0 0,1 68,88 L 28,88 A 20,20 0 0,1 8,68 L 8,28 A 20,20 0 0,1 28,8 Z" />
+    
+    <!-- Timer Top Stem -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 44,22 L 52,22 L 52,27 L 44,27 Z" />
+    
+    <!-- Timer Outer Ring & Inner Clock -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 48,28 C 34.75,28 24,38.75 24,52 C 24,65.25 34.75,76 48,76 C 61.25,76 72,65.25 72,52 C 72,38.75 61.25,28 48,28 Z M 48,70 C 38.06,70 30,61.94 30,52 C 30,42.06 38.06,34 48,34 C 57.94,34 66,42.06 66,52 C 66,61.94 57.94,70 48,70 Z" />
+    
+    <!-- Clock Hands (Fast track) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 45,40 L 49,40 L 49,53 L 57,58 L 55,61 L 45,55 Z" />
+</vector>
