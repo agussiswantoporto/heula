@@ -160,465 +160,450 @@
       };
 
       window.heulaShareImage = {
-        exportImage: function(sessionJson, configJson) {
-          try {
-            var session = JSON.parse(sessionJson || '{}');
-            var config = JSON.parse(configJson || '{}');
+        renderCanvas: function(session, config) {
+          var isStory = config.aspectRatio === 'STORY';
+          var W = 1080;
+          var H = isStory ? 1920 : 1080;
 
-            var isStory = config.aspectRatio === 'STORY';
-            var W = 1080;
-            var H = isStory ? 1920 : 1080;
+          var canvas = document.createElement('canvas');
+          canvas.width = W;
+          canvas.height = H;
+          var ctx = canvas.getContext('2d');
 
-            var canvas = document.createElement('canvas');
-            canvas.width = W;
-            canvas.height = H;
-            var ctx = canvas.getContext('2d');
+          // 100% Pure Transparent Alpha Background
+          ctx.clearRect(0, 0, W, H);
 
-            // 100% Pure Transparent Alpha Background
-            ctx.clearRect(0, 0, W, H);
+          // Universal RoundRect helper compatible with all browsers & WebKit versions
+          function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+          }
 
-            // Universal RoundRect helper compatible with all browsers & WebKit versions
-            function roundRect(x, y, w, h, r) {
-              ctx.beginPath();
-              ctx.moveTo(x + r, y);
-              ctx.lineTo(x + w - r, y);
-              ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-              ctx.lineTo(x + w, y + h - r);
-              ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-              ctx.lineTo(x + r, y + h);
-              ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-              ctx.lineTo(x, y + r);
-              ctx.quadraticCurveTo(x, y, x + r, y);
-              ctx.closePath();
+          // Compute time formats - matching Kotlin logic 1:1
+          var durMs = session.durationMs || (session.endMs - session.startMs) || 0;
+          var totalMin = Math.floor(durMs / 60000);
+          var hours = Math.floor(totalMin / 60);
+          var mins = totalMin % 60;
+          function pad(n) { return (n < 10 ? '0' : '') + n; }
+          var durMinsStr = pad(mins);
+          var durFormatted = hours + ':' + durMinsStr;
+
+          var startDate = new Date(session.startMs || Date.now());
+          var endDate = new Date(session.endMs || Date.now());
+          var startStr = pad(startDate.getHours()) + ':' + pad(startDate.getMinutes());
+          var endStr = pad(endDate.getHours()) + ':' + pad(endDate.getMinutes());
+
+          var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+          var dateStr = endDate.getDate() + ' ' + monthNames[endDate.getMonth()] + ' ' + endDate.getFullYear();
+
+          var template = config.template || 'MODERN_GRADIENT';
+          var mainColor = config.textColorHex || '#FFFFFF';
+          var planLabel = session.planLabel || '16:8';
+
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          var centerX = W / 2;
+          var centerY = isStory ? 940 : 540;
+          var s = isStory ? 1.0 : 0.85;
+
+          var sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Plus Jakarta Sans", "Inter", Roboto, sans-serif';
+          var serifFont = '"Playfair Display", "Georgia", "Times New Roman", serif';
+
+          if (template === 'MINIMALIST') {
+            var items = [];
+            if (config.showBranding) items.push({ type: 'brand', text: 'H  E  U  L  A', font: '700 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 55 * s, color: mainColor });
+            items.push({ type: 'num', text: durFormatted, font: '900 ' + Math.round(180 * s) + 'px ' + sansFont, gap: 140 * s, color: mainColor });
+            items.push({ type: 'sub', text: 'JAM BERPUASA', font: '700 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 40 * s, color: mainColor });
+            items.push({ type: 'line', gap: 40 * s, color: mainColor });
+            if (config.showTarget) items.push({ type: 'target', text: 'Target ' + planLabel + ' • Selesai', font: '600 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 42 * s, color: mainColor });
+            if (config.showTimes) items.push({ type: 'times', text: startStr + ' — ' + endStr, font: '400 ' + Math.round(25 * s) + 'px ' + sansFont, gap: 38 * s, color: mainColor, alpha: 0.85 });
+            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: mainColor, alpha: 0.65 });
+
+            var totalH = 0;
+            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
+            var startY = centerY - totalH / 2;
+            var curY = startY;
+
+            for (var i = 0; i < items.length; i++) {
+              var it = items[i];
+              if (it.type === 'line') {
+                ctx.fillStyle = it.color;
+                ctx.fillRect(centerX - (60 * s), curY, 120 * s, 3 * s);
+              } else {
+                ctx.font = it.font;
+                ctx.fillStyle = it.color;
+                ctx.globalAlpha = it.alpha || 1.0;
+                ctx.fillText(it.text, centerX, curY);
+                ctx.globalAlpha = 1.0;
+              }
+              curY += it.gap;
             }
 
-            // Compute time formats - matching Kotlin logic 1:1
-            var durMs = session.durationMs || (session.endMs - session.startMs) || 0;
-            var totalMin = Math.floor(durMs / 60000);
-            var hours = Math.floor(totalMin / 60);
-            var mins = totalMin % 60;
-            function pad(n) { return (n < 10 ? '0' : '') + n; }
-            var durMinsStr = pad(mins);
-            var durFormatted = hours + ':' + durMinsStr;
+          } else if (template === 'MODERN_GRADIENT') {
+            var items = [];
+            if (config.showBranding) items.push({ type: 'pill', gap: 90 * s });
+            items.push({ type: 'num', text: durFormatted, font: '900 ' + Math.round(180 * s) + 'px ' + sansFont, gap: 145 * s, color: '#FFFFFF' });
+            items.push({ type: 'sub', text: 'BERHASIL BERPUASA', font: '800 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 55 * s, color: '#FC5200' });
 
-            var startDate = new Date(session.startMs || Date.now());
-            var endDate = new Date(session.endMs || Date.now());
-            var startStr = pad(startDate.getHours()) + ':' + pad(startDate.getMinutes());
-            var endStr = pad(endDate.getHours()) + ':' + pad(endDate.getMinutes());
+            var hasMetrics = config.showTarget || config.showTimes;
+            if (hasMetrics) items.push({ type: 'card', gap: (120 + 35) * s });
+            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '500 ' + Math.round(24 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.85)' });
 
-            var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-            var dateStr = endDate.getDate() + ' ' + monthNames[endDate.getMonth()] + ' ' + endDate.getFullYear();
+            var totalH = 0;
+            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
+            var startY = centerY - totalH / 2;
+            var curY = startY;
 
-            var template = config.template || 'MODERN_GRADIENT';
-            var mainColor = config.textColorHex || '#FFFFFF';
-            var planLabel = session.planLabel || '16:8';
-
-            ctx.save();
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            var centerX = W / 2;
-            var centerY = isStory ? (H * 0.48) : (H * 0.50);
-            var s = isStory ? 1.0 : 0.82; // Scaling factor for 1:1 vs 9:16
-
-            var sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Plus Jakarta Sans", "Inter", Roboto, sans-serif';
-            var serifFont = '"Playfair Display", "Georgia", "Times New Roman", serif';
-
-            if (template === 'MINIMALIST') {
-              var baseY = centerY - (130 * s);
-
-              if (config.showBranding) {
-                ctx.font = '700 ' + Math.round(28 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.shadowColor = 'rgba(0,0,0,0.35)';
-                ctx.shadowBlur = 8;
-                ctx.fillText('H  E  U  L  A', centerX, baseY);
-                baseY += (70 * s);
-              }
-
-              ctx.font = '900 ' + Math.round(175 * s) + 'px ' + sansFont;
-              ctx.fillStyle = mainColor;
-              ctx.shadowColor = 'rgba(0,0,0,0.4)';
-              ctx.shadowBlur = 12;
-              ctx.fillText(durFormatted, centerX, baseY + (75 * s));
-              baseY += (175 * s);
-
-              ctx.font = '700 ' + Math.round(28 * s) + 'px ' + sansFont;
-              ctx.fillStyle = mainColor;
-              ctx.fillText('JAM BERPUASA', centerX, baseY);
-              baseY += (45 * s);
-
-              // Thin divider line
-              ctx.shadowBlur = 0;
-              ctx.fillStyle = mainColor;
-              ctx.fillRect(centerX - (60 * s), baseY, 120 * s, 3 * s);
-              baseY += (40 * s);
-
-              if (config.showTarget) {
-                ctx.font = '600 ' + Math.round(28 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.fillText('Target ' + planLabel + ' • Selesai', centerX, baseY);
-                baseY += (45 * s);
-              }
-              if (config.showTimes) {
-                ctx.font = '400 ' + Math.round(25 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.globalAlpha = 0.85;
-                ctx.fillText(startStr + ' — ' + endStr, centerX, baseY);
-                ctx.globalAlpha = 1.0;
-                baseY += (40 * s);
-              }
-              if (config.showDate) {
-                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.globalAlpha = 0.65;
-                ctx.fillText(dateStr, centerX, baseY);
-                ctx.globalAlpha = 1.0;
-              }
-
-            } else if (template === 'MODERN_GRADIENT') {
-              var curY = centerY - (180 * s);
-
-              // Top Pill Badge
-              if (config.showBranding) {
-                var pillW = 320 * s;
-                var pillH = 64 * s;
+            for (var i = 0; i < items.length; i++) {
+              var it = items[i];
+              if (it.type === 'pill') {
+                var pillW = 300 * s;
+                var pillH = 58 * s;
                 var pillX = centerX - pillW / 2;
-                var pillY = curY;
-
+                var pillY = curY - pillH / 2;
                 var grad = ctx.createLinearGradient(pillX, 0, pillX + pillW, 0);
                 grad.addColorStop(0, '#FC5200');
                 grad.addColorStop(1, '#FF7A00');
                 ctx.fillStyle = grad;
                 roundRect(pillX, pillY, pillW, pillH, pillH / 2);
                 ctx.fill();
-
                 ctx.font = '800 ' + Math.round(24 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillText('FASTING ACTIVE', centerX, pillY + pillH / 2);
-                curY += (100 * s);
+                ctx.fillText('FASTING ACTIVE', centerX, curY);
+              } else if (it.type === 'card') {
+                var cardW = (config.showTarget && config.showTimes) ? (620 * s) : (380 * s);
+                var cardH = 120 * s;
+                var cardX = centerX - cardW / 2;
+                var cardY = curY - 20 * s;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+                roundRect(cardX, cardY, cardW, cardH, 22 * s);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                if (config.showTarget && config.showTimes) {
+                  var c1 = cardX + cardW * 0.27;
+                  var c2 = cardX + cardW * 0.73;
+                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                  ctx.lineWidth = 1;
+                  ctx.beginPath();
+                  ctx.moveTo(centerX, cardY + 20 * s);
+                  ctx.lineTo(centerX, cardY + cardH - 20 * s);
+                  ctx.stroke();
+
+                  ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
+                  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                  ctx.fillText('POLA', c1, cardY + 36 * s);
+                  ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
+                  ctx.fillStyle = '#FFFFFF';
+                  ctx.fillText(planLabel, c1, cardY + 78 * s);
+
+                  ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
+                  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                  ctx.fillText('WAKTU', c2, cardY + 36 * s);
+                  ctx.font = '800 ' + Math.round(28 * s) + 'px ' + sansFont;
+                  ctx.fillStyle = '#FFFFFF';
+                  ctx.fillText(startStr + ' – ' + endStr, c2, cardY + 78 * s);
+                } else if (config.showTarget) {
+                  ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
+                  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                  ctx.fillText('POLA PUASA', centerX, cardY + 36 * s);
+                  ctx.font = '800 ' + Math.round(32 * s) + 'px ' + sansFont;
+                  ctx.fillStyle = '#FFFFFF';
+                  ctx.fillText(planLabel, centerX, cardY + 78 * s);
+                } else {
+                  ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
+                  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                  ctx.fillText('WAKTU PUASA', centerX, cardY + 36 * s);
+                  ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
+                  ctx.fillStyle = '#FFFFFF';
+                  ctx.fillText(startStr + ' – ' + endStr, centerX, cardY + 78 * s);
+                }
+              } else {
+                ctx.font = it.font;
+                ctx.fillStyle = it.color;
+                ctx.fillText(it.text, centerX, curY);
               }
-
-              // Giant Duration
-              ctx.font = '900 ' + Math.round(180 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#FFFFFF';
-              ctx.shadowColor = 'rgba(0,0,0,0.5)';
-              ctx.shadowBlur = 16;
-              ctx.fillText(durFormatted, centerX, curY + (75 * s));
-              curY += (175 * s);
-
-              // Subtitle
-              ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#FC5200';
-              ctx.shadowBlur = 0;
-              ctx.fillText('BERHASIL BERPUASA', centerX, curY);
-              curY += (55 * s);
-
-              // Secondary Metrics Card
-              var cardW = 640 * s;
-              var cardH = 130 * s;
-              var cardX = centerX - cardW / 2;
-              var cardY = curY;
-
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-              roundRect(cardX, cardY, cardW, cardH, 24 * s);
-              ctx.fill();
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-              ctx.lineWidth = 1.5;
-              ctx.stroke();
-
-              // Two columns inside card
-              var col1X = cardX + (cardW * 0.28);
-              var col2X = cardX + (cardW * 0.72);
-
-              if (config.showTarget) {
-                ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                ctx.fillText('POLA', col1X, cardY + (38 * s));
-                ctx.font = '800 ' + Math.round(32 * s) + 'px ' + sansFont;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(planLabel, col1X, cardY + (82 * s));
-              }
-
-              if (config.showTimes) {
-                ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                ctx.fillText('WAKTU', col2X, cardY + (38 * s));
-                ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(startStr + ' – ' + endStr, col2X, cardY + (82 * s));
-              }
-
-              curY += cardH + (40 * s);
-
-              if (config.showDate) {
-                ctx.font = '500 ' + Math.round(24 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255,255,255,0.85)';
-                ctx.fillText(dateStr, centerX, curY);
-              }
-
-            } else if (template === 'GLASS_STYLE') {
-              var cardW = 720 * s;
-              var cardH = 480 * s;
-              var cardX = centerX - cardW / 2;
-              var cardY = centerY - cardH / 2;
-
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-              roundRect(cardX, cardY, cardW, cardH, 40 * s);
-              ctx.fill();
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-              ctx.lineWidth = 2.5;
-              ctx.stroke();
-
-              var innerY = cardY + (60 * s);
-              if (config.showBranding) {
-                ctx.font = '700 ' + Math.round(26 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillText('H E U L A   F A S T I N G', centerX, innerY);
-                innerY += (85 * s);
-              }
-
-              ctx.font = '900 ' + Math.round(135 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#FFFFFF';
-              ctx.shadowColor = 'rgba(0,0,0,0.3)';
-              ctx.shadowBlur = 10;
-              ctx.fillText(hours + 'j ' + durMinsStr + 'm', centerX, innerY);
-              innerY += (105 * s);
-
-              ctx.shadowBlur = 0;
-              if (config.showTarget) {
-                ctx.font = '600 ' + Math.round(28 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillText('Target ' + planLabel + ' Tuntas', centerX, innerY);
-                innerY += (55 * s);
-              }
-              if (config.showTimes) {
-                ctx.font = '400 ' + Math.round(25 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-                ctx.fillText(startStr + ' — ' + endStr, centerX, innerY);
-                innerY += (45 * s);
-              }
-              if (config.showDate) {
-                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                ctx.fillText(dateStr, centerX, innerY);
-              }
-
-            } else if (template === 'TYPOGRAPHY') {
-              var startX = centerX - (360 * s);
-              var curY = centerY - (160 * s);
-              ctx.textAlign = 'left';
-
-              if (config.showBranding) {
-                ctx.font = '900 ' + Math.round(30 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.shadowColor = 'rgba(0,0,0,0.4)';
-                ctx.shadowBlur = 8;
-                ctx.fillText('FASTING RECORD', startX, curY);
-                curY += (70 * s);
-              }
-
-              // Big number
-              var numFont = '900 ' + Math.round(210 * s) + 'px ' + sansFont;
-              ctx.font = numFont;
-              ctx.fillStyle = mainColor;
-              var numText = String(hours);
-              ctx.fillText(numText, startX, curY + (85 * s));
-
-              // Measure width of the big number to place JAM and MIN precisely
-              var numWidth = ctx.measureText(numText).width;
-              var labelX = startX + numWidth + (20 * s);
-
-              ctx.font = '800 ' + Math.round(48 * s) + 'px ' + sansFont;
-              ctx.fillText('JAM', labelX, curY + (45 * s));
-              ctx.fillText(durMinsStr + ' MNT', labelX, curY + (115 * s));
-              curY += (210 * s);
-
-              ctx.shadowBlur = 0;
-              if (config.showTarget || config.showTimes) {
-                ctx.font = '700 ' + Math.round(30 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.fillText(planLabel + ' • ' + startStr + ' — ' + endStr, startX, curY);
-                curY += (50 * s);
-              }
-              if (config.showDate) {
-                ctx.font = '500 ' + Math.round(24 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.globalAlpha = 0.75;
-                ctx.fillText(dateStr, startX, curY);
-                ctx.globalAlpha = 1.0;
-              }
-
-            } else if (template === 'EDITORIAL') {
-              var curY = centerY - (140 * s);
-
-              if (config.showBranding) {
-                ctx.font = '400 ' + Math.round(28 * s) + 'px ' + serifFont;
-                ctx.fillStyle = mainColor;
-                ctx.fillText('— HEULA JOURNAL —', centerX, curY);
-                curY += (80 * s);
-              }
-
-              ctx.font = '300 ' + Math.round(145 * s) + 'px ' + serifFont;
-              ctx.fillStyle = mainColor;
-              ctx.shadowColor = 'rgba(0,0,0,0.35)';
-              ctx.shadowBlur = 10;
-              ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, curY + (60 * s));
-              curY += (150 * s);
-
-              ctx.shadowBlur = 0;
-              ctx.font = 'italic ' + Math.round(30 * s) + 'px ' + serifFont;
-              ctx.fillStyle = mainColor;
-              ctx.fillText('Intermittent Fasting Completed', centerX, curY);
-              curY += (45 * s);
-
-              // Thin line
-              ctx.fillStyle = mainColor;
-              ctx.fillRect(centerX - (60 * s), curY, 120 * s, 2 * s);
-              curY += (40 * s);
-
-              if (config.showTarget) {
-                ctx.font = '400 ' + Math.round(26 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.fillText('Target: ' + planLabel, centerX, curY);
-                curY += (45 * s);
-              }
-              if (config.showDate) {
-                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.globalAlpha = 0.7;
-                ctx.fillText(dateStr, centerX, curY);
-                ctx.globalAlpha = 1.0;
-              }
-
-            } else if (template === 'NEON') {
-              var curY = centerY - (150 * s);
-
-              if (config.showBranding) {
-                ctx.font = '900 ' + Math.round(28 * s) + 'px ' + sansFont;
-                ctx.fillStyle = '#CCFF00';
-                ctx.shadowColor = '#CCFF00';
-                ctx.shadowBlur = 14;
-                ctx.fillText('// HEULA.PRO', centerX, curY);
-                curY += (75 * s);
-              }
-
-              ctx.font = '900 ' + Math.round(175 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#FFFFFF';
-              ctx.shadowColor = '#CCFF00';
-              ctx.shadowBlur = 20;
-              ctx.fillText(durFormatted, centerX, curY + (75 * s));
-              curY += (175 * s);
-
-              ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#CCFF00';
-              ctx.shadowBlur = 10;
-              ctx.fillText('FASTING GOAL UNLOCKED', centerX, curY);
-              curY += (55 * s);
-
-              ctx.shadowBlur = 0;
-              if (config.showTarget) {
-                ctx.font = '800 ' + Math.round(28 * s) + 'px ' + sansFont;
-                ctx.fillStyle = '#00F0FF';
-                ctx.fillText('TARGET ' + planLabel, centerX, curY);
-                curY += (48 * s);
-              }
-              if (config.showTimes) {
-                ctx.font = '500 ' + Math.round(25 * s) + 'px ' + sansFont;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(startStr + ' — ' + endStr, centerX, curY);
-                curY += (42 * s);
-              }
-              if (config.showDate) {
-                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.fillText(dateStr, centerX, curY);
-              }
-
-            } else if (template === 'DARK_MODE') {
-              var cardW = 720 * s;
-              var cardH = 480 * s;
-              var cardX = centerX - cardW / 2;
-              var cardY = centerY - cardH / 2;
-
-              ctx.fillStyle = 'rgba(18, 18, 20, 0.90)';
-              roundRect(cardX, cardY, cardW, cardH, 40 * s);
-              ctx.fill();
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-              ctx.lineWidth = 2;
-              ctx.stroke();
-
-              var innerY = cardY + (60 * s);
-              if (config.showBranding) {
-                ctx.font = '800 ' + Math.round(24 * s) + 'px ' + sansFont;
-                ctx.fillStyle = '#FC5200';
-                ctx.fillText('HEULA ACTIVITY', centerX, innerY);
-                innerY += (85 * s);
-              }
-
-              ctx.font = '900 ' + Math.round(135 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#FFFFFF';
-              ctx.fillText(hours + 'j ' + durMinsStr + 'm', centerX, innerY);
-              innerY += (95 * s);
-
-              ctx.font = '700 ' + Math.round(30 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#34C759';
-              ctx.fillText('Target ' + planLabel + ' Selesai', centerX, innerY);
-              innerY += (60 * s);
-
-              if (config.showTimes) {
-                ctx.font = '400 ' + Math.round(26 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.fillText(startStr + ' — ' + endStr, centerX, innerY);
-                innerY += (45 * s);
-              }
-              if (config.showDate) {
-                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255,255,255,0.5)';
-                ctx.fillText(dateStr, centerX, innerY);
-              }
-
-            } else {
-              // CLEAN_WHITE: Pure white text with soft shadow for universal readability
-              var curY = centerY - (120 * s);
-
-              if (config.showBranding) {
-                ctx.font = '700 ' + Math.round(28 * s) + 'px ' + sansFont;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.shadowColor = 'rgba(0,0,0,0.5)';
-                ctx.shadowBlur = 10;
-                ctx.fillText('H  E  U  L  A', centerX, curY);
-                curY += (70 * s);
-              }
-
-              ctx.font = '900 ' + Math.round(175 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#FFFFFF';
-              ctx.shadowColor = 'rgba(0,0,0,0.55)';
-              ctx.shadowBlur = 14;
-              ctx.fillText(durFormatted, centerX, curY + (75 * s));
-              curY += (175 * s);
-
-              ctx.font = '700 ' + Math.round(28 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#FFFFFF';
-              ctx.shadowBlur = 8;
-              ctx.fillText('TARGET ' + planLabel + ' COMPLETED', centerX, curY);
-              curY += (55 * s);
-
-              ctx.shadowBlur = 6;
-              if (config.showTimes) {
-                ctx.font = '400 ' + Math.round(26 * s) + 'px ' + sansFont;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(startStr + ' — ' + endStr, centerX, curY);
-                curY += (45 * s);
-              }
-              if (config.showDate) {
-                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
-                ctx.fillStyle = 'rgba(255,255,255,0.85)';
-                ctx.fillText(dateStr, centerX, curY);
-              }
+              curY += it.gap;
             }
 
-            ctx.restore();
+          } else if (template === 'GLASS_STYLE') {
+            var items = [];
+            if (config.showBranding) items.push({ text: 'H E U L A   F A S T I N G', font: '700 ' + Math.round(26 * s) + 'px ' + sansFont, gap: 75 * s, color: 'rgba(255,255,255,0.9)' });
+            items.push({ text: hours + 'j ' + durMinsStr + 'm', font: '900 ' + Math.round(130 * s) + 'px ' + sansFont, gap: 100 * s, color: '#FFFFFF' });
+            if (config.showTarget) items.push({ text: 'Target ' + planLabel + ' Tuntas', font: '600 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 50 * s, color: 'rgba(255,255,255,0.9)' });
+            if (config.showTimes) items.push({ text: startStr + ' — ' + endStr, font: '400 ' + Math.round(25 * s) + 'px ' + sansFont, gap: 42 * s, color: 'rgba(255,255,255,0.75)' });
+            if (config.showDate) items.push({ text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.6)' });
+
+            var totalInnerH = 0;
+            for (var i = 0; i < items.length - 1; i++) totalInnerH += items[i].gap;
+            var padY = 60 * s;
+            var cardH = totalInnerH + padY * 2;
+            var cardW = 720 * s;
+            var cardX = centerX - cardW / 2;
+            var cardY = centerY - cardH / 2;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+            roundRect(cardX, cardY, cardW, cardH, 40 * s);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            var curY = cardY + padY;
+            for (var i = 0; i < items.length; i++) {
+              ctx.font = items[i].font;
+              ctx.fillStyle = items[i].color;
+              ctx.fillText(items[i].text, centerX, curY);
+              curY += items[i].gap;
+            }
+
+          } else if (template === 'TYPOGRAPHY') {
+            var numText = String(hours);
+            ctx.font = '900 ' + Math.round(200 * s) + 'px ' + sansFont;
+            var numW = ctx.measureText(numText).width;
+            var totalBlockW = numW + (20 * s) + (160 * s);
+            var startX = centerX - totalBlockW / 2;
+
+            var items = [];
+            if (config.showBranding) items.push({ type: 'brand', text: 'FASTING RECORD', font: '900 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 70 * s, color: mainColor });
+            items.push({ type: 'num', gap: 175 * s });
+            if (config.showTarget || config.showTimes) items.push({ type: 'sub', text: planLabel + ' • ' + startStr + ' — ' + endStr, font: '700 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 48 * s, color: mainColor });
+            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '500 ' + Math.round(24 * s) + 'px ' + sansFont, gap: 35 * s, color: mainColor, alpha: 0.75 });
+
+            var totalH = 0;
+            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
+            var startY = centerY - totalH / 2;
+            var curY = startY;
+
+            ctx.textAlign = 'left';
+            for (var i = 0; i < items.length; i++) {
+              var it = items[i];
+              if (it.type === 'num') {
+                ctx.font = '900 ' + Math.round(200 * s) + 'px ' + sansFont;
+                ctx.fillStyle = mainColor;
+                ctx.fillText(numText, startX, curY + 65 * s);
+
+                var labelX = startX + numW + (22 * s);
+                ctx.font = '800 ' + Math.round(44 * s) + 'px ' + sansFont;
+                ctx.fillText('JAM', labelX, curY + 30 * s);
+                ctx.fillText(durMinsStr + ' MNT', labelX, curY + 95 * s);
+              } else {
+                ctx.font = it.font;
+                ctx.fillStyle = it.color;
+                ctx.globalAlpha = it.alpha || 1.0;
+                ctx.fillText(it.text, startX, curY);
+                ctx.globalAlpha = 1.0;
+              }
+              curY += it.gap;
+            }
+            ctx.textAlign = 'center';
+
+          } else if (template === 'EDITORIAL') {
+            var items = [];
+            if (config.showBranding) items.push({ type: 'brand', text: '— HEULA JOURNAL —', font: '400 ' + Math.round(28 * s) + 'px ' + serifFont, gap: 75 * s, color: mainColor });
+            items.push({ type: 'num', text: hours + 'h ' + durMinsStr + 'm', font: '300 ' + Math.round(145 * s) + 'px ' + serifFont, gap: 115 * s, color: mainColor });
+            items.push({ type: 'sub', text: 'Intermittent Fasting Completed', font: 'italic ' + Math.round(30 * s) + 'px ' + serifFont, gap: 42 * s, color: mainColor });
+            items.push({ type: 'line', gap: 40 * s, color: mainColor });
+            if (config.showTarget) items.push({ type: 'target', text: 'Target: ' + planLabel, font: '400 ' + Math.round(26 * s) + 'px ' + sansFont, gap: 42 * s, color: mainColor });
+            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: mainColor, alpha: 0.7 });
+
+            var totalH = 0;
+            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
+            var startY = centerY - totalH / 2;
+            var curY = startY;
+
+            for (var i = 0; i < items.length; i++) {
+              var it = items[i];
+              if (it.type === 'line') {
+                ctx.fillStyle = it.color;
+                ctx.fillRect(centerX - (60 * s), curY, 120 * s, 2 * s);
+              } else {
+                ctx.font = it.font;
+                ctx.fillStyle = it.color;
+                ctx.globalAlpha = it.alpha || 1.0;
+                ctx.fillText(it.text, centerX, curY);
+                ctx.globalAlpha = 1.0;
+              }
+              curY += it.gap;
+            }
+
+          } else if (template === 'NEON') {
+            var items = [];
+            if (config.showBranding) items.push({ type: 'brand', text: '// HEULA.PRO', font: '900 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 70 * s, color: '#CCFF00' });
+            items.push({ type: 'num', text: durFormatted, font: '900 ' + Math.round(175 * s) + 'px ' + sansFont, gap: 135 * s, color: '#FFFFFF', glow: true });
+            items.push({ type: 'sub', text: 'FASTING GOAL UNLOCKED', font: '800 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 50 * s, color: '#CCFF00' });
+            if (config.showTarget) items.push({ type: 'target', text: 'TARGET ' + planLabel, font: '800 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 45 * s, color: '#00F0FF' });
+            if (config.showTimes) items.push({ type: 'times', text: startStr + ' — ' + endStr, font: '500 ' + Math.round(25 * s) + 'px ' + sansFont, gap: 40 * s, color: '#FFFFFF' });
+            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.7)' });
+
+            var totalH = 0;
+            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
+            var startY = centerY - totalH / 2;
+            var curY = startY;
+
+            for (var i = 0; i < items.length; i++) {
+              var it = items[i];
+              ctx.font = it.font;
+              ctx.fillStyle = it.color;
+              if (it.glow) {
+                ctx.shadowColor = '#CCFF00';
+                ctx.shadowBlur = 18;
+              } else {
+                ctx.shadowBlur = 0;
+              }
+              ctx.fillText(it.text, centerX, curY);
+              curY += it.gap;
+            }
+            ctx.shadowBlur = 0;
+
+          } else if (template === 'DARK_MODE') {
+            var items = [];
+            if (config.showBranding) items.push({ text: 'HEULA ACTIVITY', font: '800 ' + Math.round(24 * s) + 'px ' + sansFont, gap: 70 * s, color: '#FC5200' });
+            items.push({ text: hours + 'j ' + durMinsStr + 'm', font: '900 ' + Math.round(130 * s) + 'px ' + sansFont, gap: 95 * s, color: '#FFFFFF' });
+            items.push({ text: 'Target ' + planLabel + ' Selesai', font: '700 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 55 * s, color: '#34C759' });
+            if (config.showTimes) items.push({ text: startStr + ' — ' + endStr, font: '400 ' + Math.round(26 * s) + 'px ' + sansFont, gap: 42 * s, color: 'rgba(255,255,255,0.7)' });
+            if (config.showDate) items.push({ text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.5)' });
+
+            var totalInnerH = 0;
+            for (var i = 0; i < items.length - 1; i++) totalInnerH += items[i].gap;
+            var padY = 60 * s;
+            var cardH = totalInnerH + padY * 2;
+            var cardW = 720 * s;
+            var cardX = centerX - cardW / 2;
+            var cardY = centerY - cardH / 2;
+
+            ctx.fillStyle = 'rgba(18, 18, 20, 0.90)';
+            roundRect(cardX, cardY, cardW, cardH, 40 * s);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            var curY = cardY + padY;
+            for (var i = 0; i < items.length; i++) {
+              ctx.font = items[i].font;
+              ctx.fillStyle = items[i].color;
+              ctx.fillText(items[i].text, centerX, curY);
+              curY += items[i].gap;
+            }
+
+          } else {
+            // CLEAN_WHITE: Pure white text with soft shadow for universal readability
+            var items = [];
+            if (config.showBranding) items.push({ text: 'H  E  U  L  A', font: '700 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 65 * s, color: '#FFFFFF' });
+            items.push({ text: durFormatted, font: '900 ' + Math.round(180 * s) + 'px ' + sansFont, gap: 140 * s, color: '#FFFFFF' });
+            items.push({ text: 'TARGET ' + planLabel + ' COMPLETED', font: '700 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 50 * s, color: '#FFFFFF' });
+            if (config.showTimes) items.push({ text: startStr + ' — ' + endStr, font: '400 ' + Math.round(26 * s) + 'px ' + sansFont, gap: 42 * s, color: '#FFFFFF' });
+            if (config.showDate) items.push({ text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.85)' });
+
+            var totalH = 0;
+            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
+            var startY = centerY - totalH / 2;
+            var curY = startY;
+
+            ctx.shadowColor = 'rgba(0,0,0,0.45)';
+            ctx.shadowBlur = 10;
+            for (var i = 0; i < items.length; i++) {
+              ctx.font = items[i].font;
+              ctx.fillStyle = items[i].color;
+              ctx.fillText(items[i].text, centerX, curY);
+              curY += items[i].gap;
+            }
+            ctx.shadowBlur = 0;
+          }
+
+          ctx.restore();
+          return canvas;
+        },
+
+        renderBase64Png: function(sessionJson, configJson) {
+          try {
+            var session = JSON.parse(sessionJson || '{}');
+            var config = JSON.parse(configJson || '{}');
+            var canvas = window.heulaShareImage.renderCanvas(session, config);
+            var dataUrl = canvas.toDataURL('image/png');
+            return dataUrl.split(',')[1] || '';
+          } catch(e) {
+            console.error('renderBase64Png error:', e);
+            return '';
+          }
+        },
+
+        exportImage: function(sessionJson, configJson) {
+          try {
+            var session = JSON.parse(sessionJson || '{}');
+            var config = JSON.parse(configJson || '{}');
+            var canvas = window.heulaShareImage.renderCanvas(session, config);
+
+            // Compute time formats for notification text
+            var durMs = session.durationMs || (session.endMs - session.startMs) || 0;
+            var totalMin = Math.floor(durMs / 60000);
+            var hours = Math.floor(totalMin / 60);
+            var mins = totalMin % 60;
+            var durFormatted = hours + ' JAM ' + mins + ' MENIT';
+
+            // Export to Transparent PNG
+            canvas.toBlob(function(blob) {
+              if (!blob) {
+                window.localStorage.setItem('heula_share_export_status', 'ERR:Gagal membuat blob gambar');
+                return;
+              }
+
+              var fileName = 'heula-fast-' + Date.now() + '.png';
+              var file = new File([blob], fileName, { type: 'image/png' });
+
+              // Web Share API on Mobile (iOS / Android)
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                  files: [file],
+                  title: 'Jejak Puasa Heula',
+                  text: 'Saya baru saja menyelesaikan puasa ' + durFormatted + ' dengan Heula!'
+                })
+                .then(function() {
+                  window.localStorage.setItem('heula_share_export_status', 'OK');
+                })
+                .catch(function(err) {
+                  if (err.name !== 'AbortError') {
+                    window.heulaShareImage.triggerDownload(blob, fileName);
+                  }
+                  window.localStorage.setItem('heula_share_export_status', 'OK');
+                });
+              } else {
+                window.heulaShareImage.triggerDownload(blob, fileName);
+                window.localStorage.setItem('heula_share_export_status', 'OK');
+              }
+            }, 'image/png');
+
+          } catch (e) {
+            console.error('Share export error:', e);
+            window.localStorage.setItem('heula_share_export_status', 'ERR:' + e.message);
+          }
+        },
+
+        triggerDownload: function(blob, fileName) {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+        }
+      };
 
             // Export to Transparent PNG
             canvas.toBlob(function(blob) {

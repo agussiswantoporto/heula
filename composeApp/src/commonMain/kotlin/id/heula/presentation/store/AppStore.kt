@@ -92,6 +92,10 @@ class AppStore(
         }
     }
 
+    suspend fun generateSharePreview(session: FastingSession, config: ShareCustomization): androidx.compose.ui.graphics.ImageBitmap? {
+        return shareExporter.generatePreviewBitmap(session, config)
+    }
+
     fun triggerAutoSync() {
         if (currentUser.value != null && syncState.value != SyncState.SYNCING) {
             scope.launch {

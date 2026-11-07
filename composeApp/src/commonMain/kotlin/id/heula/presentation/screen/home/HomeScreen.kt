@@ -271,6 +271,9 @@ fun HomeScreen(
             onDismiss = { sessionToShare = null },
             onExport = { config, onResult ->
                 store.exportShareImage(sessionToShare!!, config, onResult)
+            },
+            onGeneratePreview = { config ->
+                store.generateSharePreview(sessionToShare!!, config)
             }
         )
     }

@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.ImageBitmap
 import id.heula.domain.model.*
 import id.heula.presentation.component.ui.HeulaButton
 import id.heula.presentation.theme.BrandPrimary
@@ -43,10 +46,15 @@ fun FastingShareModal(
     session: FastingSession,
     onDismiss: () -> Unit,
     onExport: (ShareCustomization, (Result<Unit>) -> Unit) -> Unit,
+    onGeneratePreview: (suspend (ShareCustomization) -> ImageBitmap?)? = null,
 ) {
     var config by remember { mutableStateOf(ShareCustomization()) }
     var isExporting by remember { mutableStateOf(false) }
     var showCustomizationSettings by remember { mutableStateOf(false) }
+
+    val previewBitmap by produceState<ImageBitmap?>(null, session, config) {
+        value = onGeneratePreview?.invoke(config)
+    }
 
     val durMinutes = (session.durationMs / 60000L).toInt()
     val hours = durMinutes / 60
@@ -147,17 +155,26 @@ fun FastingShareModal(
                             // Background Checkerboard Pattern
                             CheckerboardPattern(modifier = Modifier.fillMaxSize())
 
-                            // Render Card Overlay based on Template
-                            ShareCardPreview(
-                                session = session,
-                                config = config,
-                                durFormatted = durFormatted,
-                                hours = hours,
-                                mins = mins,
-                                startStr = startStr,
-                                endStr = endStr,
-                                dateStr = dateStr,
-                            )
+                            if (previewBitmap != null) {
+                                Image(
+                                    bitmap = previewBitmap!!,
+                                    contentDescription = "Share Preview",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Fit,
+                                )
+                            } else {
+                                // Fallback Compose layout
+                                ShareCardPreview(
+                                    session = session,
+                                    config = config,
+                                    durFormatted = durFormatted,
+                                    hours = hours,
+                                    mins = mins,
+                                    startStr = startStr,
+                                    endStr = endStr,
+                                    dateStr = dateStr,
+                                )
+                            }
                         }
                     }
 
