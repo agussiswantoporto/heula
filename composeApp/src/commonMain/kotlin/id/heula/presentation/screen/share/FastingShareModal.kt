@@ -51,7 +51,7 @@ fun FastingShareModal(
 ) {
     var config by remember { mutableStateOf(ShareCustomization()) }
     var isExporting by remember { mutableStateOf(false) }
-    var showCustomizationSettings by remember { mutableStateOf(false) }
+    var showCustomizationSettings by remember { mutableStateOf(true) }
 
     val previewBitmap by produceState<ImageBitmap?>(null, session, config) {
         value = onGeneratePreview?.invoke(config)
@@ -446,14 +446,16 @@ private fun ToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) },
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 4.dp, horizontal = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = title, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = null,
             modifier = Modifier.height(24.dp),
         )
     }
@@ -513,34 +515,40 @@ private fun StravaMarkIcon(color: Color, modifier: Modifier = Modifier.size(16.d
 
 @Composable
 private fun StravaStatsRow(
-    col1Label: String, col1Val: String,
-    col2Label: String, col2Val: String,
-    col3Label: String, col3Val: String,
+    showTarget: Boolean,
+    showTimes: Boolean,
+    planVal: String,
+    startVal: String,
+    endVal: String,
     textColor: Color,
     subColor: Color,
     dividerColor: Color,
 ) {
+    val items = mutableListOf<Pair<String, String>>()
+    if (showTarget) items.add("POLA" to planVal)
+    if (showTimes) {
+        items.add("MULAI" to startVal)
+        items.add("SELESAI" to endVal)
+    }
+    if (items.isEmpty()) return
+
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-            Text(col1Label, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = subColor, letterSpacing = 1.sp)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(col1Val, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = textColor)
-        }
-        Box(modifier = Modifier.width(1.dp).height(20.dp).background(dividerColor))
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-            Text(col2Label, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = subColor, letterSpacing = 1.sp)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(col2Val, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = textColor)
-        }
-        Box(modifier = Modifier.width(1.dp).height(20.dp).background(dividerColor))
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-            Text(col3Label, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = subColor, letterSpacing = 1.sp)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(col3Val, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = textColor)
+        items.forEachIndexed { index, (label, value) ->
+            if (index > 0) {
+                Box(modifier = Modifier.width(1.dp).height(20.dp).background(dividerColor))
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(label, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = subColor, letterSpacing = 1.sp)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(value, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = textColor)
+            }
         }
     }
 }
@@ -593,12 +601,14 @@ private fun ShareCardPreview(
                         fontWeight = FontWeight.Black,
                         color = textColor,
                     )
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.25f)))
                     if (config.showTarget || config.showTimes) {
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.25f)))
                         StravaStatsRow(
-                            col1Label = "POLA", col1Val = session.planLabel,
-                            col2Label = "MULAI", col2Val = startStr,
-                            col3Label = "SELESAI", col3Val = endStr,
+                            showTarget = config.showTarget,
+                            showTimes = config.showTimes,
+                            planVal = session.planLabel,
+                            startVal = startStr,
+                            endVal = endStr,
                             textColor = textColor,
                             subColor = Color.White.copy(alpha = 0.6f),
                             dividerColor = Color.White.copy(alpha = 0.2f),
@@ -623,22 +633,24 @@ private fun ShareCardPreview(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                StravaMarkIcon(color = Color(0xFFFC5200), modifier = Modifier.size(13.dp))
-                                Text("HEULA", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color.White)
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(99.dp))
-                                    .background(Brush.horizontalGradient(listOf(Color(0xFFFC5200), Color(0xFFFF7A00))))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                        if (config.showBranding) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text("✓ TARGET TUNTAS", fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    StravaMarkIcon(color = Color(0xFFFC5200), modifier = Modifier.size(13.dp))
+                                    Text("HEULA", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color.White)
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(99.dp))
+                                        .background(Brush.horizontalGradient(listOf(Color(0xFFFC5200), Color(0xFFFF7A00))))
+                                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                                ) {
+                                    Text("✓ TARGET TUNTAS", fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                }
                             }
                         }
                         Text("TOTAL WAKTU BERPUASA", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.65f), letterSpacing = 1.sp)
@@ -646,17 +658,21 @@ private fun ShareCardPreview(
                             text = durFormatted,
                             fontSize = 38.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color.White,
+                            color = textColor,
                         )
-                        Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color.White.copy(alpha = 0.12f)))
-                        StravaStatsRow(
-                            col1Label = "POLA", col1Val = session.planLabel,
-                            col2Label = "MULAI", col2Val = startStr,
-                            col3Label = "SELESAI", col3Val = endStr,
-                            textColor = Color.White,
-                            subColor = Color.White.copy(alpha = 0.55f),
-                            dividerColor = Color.White.copy(alpha = 0.12f),
-                        )
+                        if (config.showTarget || config.showTimes) {
+                            Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color.White.copy(alpha = 0.12f)))
+                            StravaStatsRow(
+                                showTarget = config.showTarget,
+                                showTimes = config.showTimes,
+                                planVal = session.planLabel,
+                                startVal = startStr,
+                                endVal = endStr,
+                                textColor = textColor,
+                                subColor = Color.White.copy(alpha = 0.55f),
+                                dividerColor = Color.White.copy(alpha = 0.12f),
+                            )
+                        }
                         if (config.showDate) {
                             Text(dateStr, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.45f))
                         }
@@ -677,22 +693,24 @@ private fun ShareCardPreview(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Box(modifier = Modifier.width(3.dp).height(12.dp).background(Color(0xFFFC5200), RoundedCornerShape(2.dp)))
-                                Text("INTERMITTENT FASTING", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        if (config.showBranding) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(modifier = Modifier.width(3.dp).height(12.dp).background(Color(0xFFFC5200), RoundedCornerShape(2.dp)))
+                                    Text("INTERMITTENT FASTING", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.White)
+                                }
+                                Text("HEULA PRO", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFFC5200))
                             }
-                            Text("HEULA PRO", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFFC5200))
                         }
                         Text(
                             text = "${hours}j ${minsStr}m",
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color.White,
+                            color = textColor,
                         )
                         Box(
                             modifier = Modifier
@@ -703,15 +721,22 @@ private fun ShareCardPreview(
                         ) {
                             Text("● 100% TARGET PUASA TUNTAS", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34C759))
                         }
-                        Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color.White.copy(alpha = 0.10f)))
-                        StravaStatsRow(
-                            col1Label = "POLA", col1Val = session.planLabel,
-                            col2Label = "MULAI", col2Val = startStr,
-                            col3Label = "SELESAI", col3Val = endStr,
-                            textColor = Color.White,
-                            subColor = Color.White.copy(alpha = 0.50f),
-                            dividerColor = Color.White.copy(alpha = 0.10f),
-                        )
+                        if (config.showTarget || config.showTimes) {
+                            Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color.White.copy(alpha = 0.10f)))
+                            StravaStatsRow(
+                                showTarget = config.showTarget,
+                                showTimes = config.showTimes,
+                                planVal = session.planLabel,
+                                startVal = startStr,
+                                endVal = endStr,
+                                textColor = textColor,
+                                subColor = Color.White.copy(alpha = 0.50f),
+                                dividerColor = Color.White.copy(alpha = 0.10f),
+                            )
+                        }
+                        if (config.showDate) {
+                            Text(dateStr, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.45f))
+                        }
                     }
                 }
             }
@@ -734,7 +759,11 @@ private fun ShareCardPreview(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("⚡ HEULA ATHLETICS", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                            if (config.showBranding) {
+                                Text("⚡ HEULA ATHLETICS", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                            } else {
+                                Spacer(modifier = Modifier.width(1.dp))
+                            }
                             if (config.showDate) {
                                 Text(dateStr, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.75f))
                             }
@@ -743,25 +772,29 @@ private fun ShareCardPreview(
                             text = "${hours}h ${minsStr}m",
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color.White,
+                            color = textColor,
                         )
                         Text("Target ${session.planLabel} Selesai Sempurna", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.9f))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White.copy(alpha = 0.12f))
-                                .border(0.5.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(12.dp))
-                                .padding(vertical = 6.dp),
-                        ) {
-                            StravaStatsRow(
-                                col1Label = "POLA", col1Val = session.planLabel,
-                                col2Label = "MULAI", col2Val = startStr,
-                                col3Label = "SELESAI", col3Val = endStr,
-                                textColor = Color.White,
-                                subColor = Color.White.copy(alpha = 0.70f),
-                                dividerColor = Color.White.copy(alpha = 0.18f),
-                            )
+                        if (config.showTarget || config.showTimes) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.12f))
+                                    .border(0.5.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(12.dp))
+                                    .padding(vertical = 6.dp),
+                            ) {
+                                StravaStatsRow(
+                                    showTarget = config.showTarget,
+                                    showTimes = config.showTimes,
+                                    planVal = session.planLabel,
+                                    startVal = startStr,
+                                    endVal = endStr,
+                                    textColor = textColor,
+                                    subColor = Color.White.copy(alpha = 0.70f),
+                                    dividerColor = Color.White.copy(alpha = 0.18f),
+                                )
+                            }
                         }
                     }
                 }
@@ -773,9 +806,11 @@ private fun ShareCardPreview(
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(modifier = Modifier.width(3.dp).height(14.dp).background(Color(0xFFFC5200), RoundedCornerShape(2.dp)))
-                        Text("HEULA // FASTING MILESTONE", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color(0xFFFC5200), letterSpacing = 1.sp)
+                    if (config.showBranding) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(modifier = Modifier.width(3.dp).height(14.dp).background(Color(0xFFFC5200), RoundedCornerShape(2.dp)))
+                            Text("HEULA // FASTING MILESTONE", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color(0xFFFC5200), letterSpacing = 1.sp)
+                        }
                     }
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
@@ -791,15 +826,22 @@ private fun ShareCardPreview(
                             Text("+ $minsStr MENIT", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFFC5200))
                         }
                     }
-                    Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(Color(0xFFFC5200)))
-                    StravaStatsRow(
-                        col1Label = "TARGET", col1Val = session.planLabel,
-                        col2Label = "WAKTU", col2Val = "$startStr → $endStr",
-                        col3Label = "TANGGAL", col3Val = dateStr,
-                        textColor = textColor,
-                        subColor = Color.White.copy(alpha = 0.6f),
-                        dividerColor = Color.White.copy(alpha = 0.2f),
-                    )
+                    if (config.showTarget || config.showTimes) {
+                        Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(Color(0xFFFC5200)))
+                        StravaStatsRow(
+                            showTarget = config.showTarget,
+                            showTimes = config.showTimes,
+                            planVal = session.planLabel,
+                            startVal = startStr,
+                            endVal = endStr,
+                            textColor = textColor,
+                            subColor = Color.White.copy(alpha = 0.6f),
+                            dividerColor = Color.White.copy(alpha = 0.2f),
+                        )
+                    }
+                    if (config.showDate) {
+                        Text(dateStr, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.65f))
+                    }
                 }
             }
 
@@ -816,24 +858,32 @@ private fun ShareCardPreview(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text("—  HEULA ATHLETIC JOURNAL  —", fontSize = 9.sp, fontFamily = FontFamily.Serif, color = Color.White.copy(alpha = 0.75f), letterSpacing = 2.sp)
-                        Text("VOLUME 24  •  $dateStr", fontSize = 8.sp, color = Color.White.copy(alpha = 0.45f))
+                        if (config.showBranding) {
+                            Text("—  HEULA ATHLETIC JOURNAL  —", fontSize = 9.sp, fontFamily = FontFamily.Serif, color = Color.White.copy(alpha = 0.75f), letterSpacing = 2.sp)
+                        }
+                        if (config.showDate) {
+                            Text("VOLUME 24  •  $dateStr", fontSize = 8.sp, color = Color.White.copy(alpha = 0.45f))
+                        }
                         Text(
                             text = "${hours}h ${minsStr}m",
                             fontSize = 36.sp,
                             fontFamily = FontFamily.Serif,
-                            color = Color.White,
+                            color = textColor,
                         )
                         Text("Aktivitas Berpuasa Terverifikasi", fontSize = 9.sp, fontFamily = FontFamily.Serif, color = Color.White.copy(alpha = 0.8f))
-                        Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color.White.copy(alpha = 0.15f)))
-                        StravaStatsRow(
-                            col1Label = "POLA", col1Val = session.planLabel,
-                            col2Label = "MULAI", col2Val = startStr,
-                            col3Label = "SELESAI", col3Val = endStr,
-                            textColor = Color.White,
-                            subColor = Color.White.copy(alpha = 0.50f),
-                            dividerColor = Color.White.copy(alpha = 0.15f),
-                        )
+                        if (config.showTarget || config.showTimes) {
+                            Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color.White.copy(alpha = 0.15f)))
+                            StravaStatsRow(
+                                showTarget = config.showTarget,
+                                showTimes = config.showTimes,
+                                planVal = session.planLabel,
+                                startVal = startStr,
+                                endVal = endStr,
+                                textColor = textColor,
+                                subColor = Color.White.copy(alpha = 0.50f),
+                                dividerColor = Color.White.copy(alpha = 0.15f),
+                            )
+                        }
                     }
                 }
             }
@@ -851,30 +901,39 @@ private fun ShareCardPreview(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("⚡ HEULA NIGHT FAST", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color(0xFFCCFF00))
-                            Text("RECORD: UNLOCKED", fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF00F0FF))
+                        if (config.showBranding) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("⚡ HEULA NIGHT FAST", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color(0xFFCCFF00))
+                                Text("RECORD: UNLOCKED", fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF00F0FF))
+                            }
                         }
                         Text(
                             text = durFormatted,
                             fontSize = 38.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color.White,
+                            color = textColor,
                         )
                         Text("TARGET ${session.planLabel} COMPLETED", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFCCFF00))
-                        Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0xFF00F0FF).copy(alpha = 0.35f)))
-                        StravaStatsRow(
-                            col1Label = "POLA", col1Val = session.planLabel,
-                            col2Label = "MULAI", col2Val = startStr,
-                            col3Label = "SELESAI", col3Val = endStr,
-                            textColor = Color.White,
-                            subColor = Color(0xFFCCFF00),
-                            dividerColor = Color(0xFF00F0FF).copy(alpha = 0.30f),
-                        )
+                        if (config.showTarget || config.showTimes) {
+                            Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0xFF00F0FF).copy(alpha = 0.35f)))
+                            StravaStatsRow(
+                                showTarget = config.showTarget,
+                                showTimes = config.showTimes,
+                                planVal = session.planLabel,
+                                startVal = startStr,
+                                endVal = endStr,
+                                textColor = textColor,
+                                subColor = Color(0xFFCCFF00),
+                                dividerColor = Color(0xFF00F0FF).copy(alpha = 0.30f),
+                            )
+                        }
+                        if (config.showDate) {
+                            Text(dateStr, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.5f))
+                        }
                     }
                 }
             }
@@ -904,17 +963,21 @@ private fun ShareCardPreview(
                         text = "${hours}h ${minsStr}m",
                         fontSize = 38.sp,
                         fontWeight = FontWeight.Black,
-                        color = Color.White,
+                        color = textColor,
                     )
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.40f)))
-                    StravaStatsRow(
-                        col1Label = "POLA", col1Val = session.planLabel,
-                        col2Label = "MULAI", col2Val = startStr,
-                        col3Label = "SELESAI", col3Val = endStr,
-                        textColor = Color.White,
-                        subColor = Color.White.copy(alpha = 0.80f),
-                        dividerColor = Color.White.copy(alpha = 0.35f),
-                    )
+                    if (config.showTarget || config.showTimes) {
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.40f)))
+                        StravaStatsRow(
+                            showTarget = config.showTarget,
+                            showTimes = config.showTimes,
+                            planVal = session.planLabel,
+                            startVal = startStr,
+                            endVal = endStr,
+                            textColor = textColor,
+                            subColor = Color.White.copy(alpha = 0.80f),
+                            dividerColor = Color.White.copy(alpha = 0.35f),
+                        )
+                    }
                     if (config.showDate) {
                         Text("$dateStr  •  TARGET TUNTAS ✓", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }

@@ -233,7 +233,21 @@
           var dateStr = endDate.getDate() + ' ' + monthNames[endDate.getMonth()] + ' ' + endDate.getFullYear();
 
           var template = config.template || 'MODERN_GRADIENT';
-          var mainColor = config.textColorHex || '#FFFFFF';
+
+          var colorMap = {
+            'WHITE': '#FFFFFF',
+            'DARK': '#1C1C1E',
+            'STRAVA_ORANGE': '#FC5200',
+            'EMERALD': '#10B981',
+            'CYBER_LIME': '#CCFF00'
+          };
+          var mainColor = colorMap[config.textColor] || config.textColorHex || '#FFFFFF';
+
+          var showBranding = config.showBranding !== false;
+          var showDate = config.showDate !== false;
+          var showTarget = config.showTarget !== false;
+          var showTimes = config.showTimes !== false;
+
           var planLabel = session.planLabel || '16:8';
 
           var centerX = W / 2;
@@ -243,57 +257,48 @@
           var sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Plus Jakarta Sans", "Inter", "Helvetica Neue", sans-serif';
           var serifFont = '"Playfair Display", "Georgia", "Times New Roman", serif';
 
-          function drawStatsRow(x, y, w, col1Title, col1Val, col2Title, col2Val, col3Title, col3Val, textColor, subColor, divColor, sVal) {
-            var colW = w / 3;
-            var c1 = x + colW * 0.5;
-            var c2 = x + colW * 1.5;
-            var c3 = x + colW * 2.5;
-
-            if (divColor) {
-              ctx.strokeStyle = divColor;
-              ctx.lineWidth = 1;
-              ctx.beginPath();
-              ctx.moveTo(x + colW, y - 10 * sVal);
-              ctx.lineTo(x + colW, y + 45 * sVal);
-              ctx.moveTo(x + colW * 2, y - 10 * sVal);
-              ctx.lineTo(x + colW * 2, y + 45 * sVal);
-              ctx.stroke();
+          function drawStatsRow(x, y, w, hasTarget, hasTimes, textColor, subColor, divColor, sVal) {
+            var items = [];
+            if (hasTarget) items.push({ title: 'POLA', val: planLabel });
+            if (hasTimes) {
+              items.push({ title: 'MULAI', val: startStr });
+              items.push({ title: 'SELESAI', val: endStr });
             }
+            if (items.length === 0) return;
 
+            var colW = w / items.length;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.font = '700 ' + Math.round(18 * sVal) + 'px ' + sansFont;
-            ctx.fillStyle = subColor;
-            ctx.fillText(col1Title, c1, y);
-            ctx.font = '800 ' + Math.round(36 * sVal) + 'px ' + sansFont;
-            ctx.fillStyle = textColor;
-            ctx.fillText(col1Val, c1, y + 34 * sVal);
 
-            ctx.font = '700 ' + Math.round(18 * sVal) + 'px ' + sansFont;
-            ctx.fillStyle = subColor;
-            ctx.fillText(col2Title, c2, y);
-            ctx.font = '800 ' + Math.round(36 * sVal) + 'px ' + sansFont;
-            ctx.fillStyle = textColor;
-            ctx.fillText(col2Val, c2, y + 34 * sVal);
+            for (var i = 0; i < items.length; i++) {
+              var cx = x + colW * (i + 0.5);
+              if (i > 0 && divColor) {
+                ctx.strokeStyle = divColor;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x + colW * i, y - 8 * sVal);
+                ctx.lineTo(x + colW * i, y + 42 * sVal);
+                ctx.stroke();
+              }
 
-            ctx.font = '700 ' + Math.round(18 * sVal) + 'px ' + sansFont;
-            ctx.fillStyle = subColor;
-            ctx.fillText(col3Title, c3, y);
-            ctx.font = '800 ' + Math.round(36 * sVal) + 'px ' + sansFont;
-            ctx.fillStyle = textColor;
-            ctx.fillText(col3Val, c3, y + 34 * sVal);
+              ctx.font = '700 ' + Math.round(18 * sVal) + 'px ' + sansFont;
+              ctx.fillStyle = subColor;
+              ctx.fillText(items[i].title, cx, y);
+
+              ctx.font = '800 ' + Math.round(36 * sVal) + 'px ' + sansFont;
+              ctx.fillStyle = textColor;
+              ctx.fillText(items[i].val, cx, y + 34 * sVal);
+            }
           }
 
           ctx.save();
 
           if (template === 'MINIMALIST') {
-            // 1. MINIMALIST — Strava Athletic Pure Overlay (No Box)
             var blockW = 840 * s;
             var startX = centerX - blockW / 2;
             var curY = centerY - 190 * s;
 
-            // Header
-            if (config.showBranding) {
+            if (showBranding) {
               drawStravaMark(startX, curY - 14 * s, 32 * s, '#FC5200');
               ctx.textAlign = 'left';
               ctx.textBaseline = 'middle';
@@ -308,7 +313,6 @@
               curY += 38 * s;
             }
 
-            // Top hairline
             ctx.strokeStyle = 'rgba(255,255,255,0.28)';
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -317,7 +321,6 @@
             ctx.stroke();
             curY += 50 * s;
 
-            // Hero
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.font = '800 ' + Math.round(20 * s) + 'px ' + sansFont;
@@ -325,7 +328,6 @@
             ctx.fillText('WAKTU BERPUASA', centerX, curY);
             curY += 100 * s;
 
-            // Giant duration with shadow
             ctx.shadowColor = 'rgba(0,0,0,0.6)';
             ctx.shadowBlur = 18;
             ctx.font = '900 ' + Math.round(185 * s) + 'px ' + sansFont;
@@ -334,29 +336,20 @@
             ctx.shadowBlur = 0;
             curY += 105 * s;
 
-            // Bottom hairline
-            ctx.strokeStyle = 'rgba(255,255,255,0.28)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(startX, curY);
-            ctx.lineTo(startX + blockW, curY);
-            ctx.stroke();
-            curY += 45 * s;
+            if (showTarget || showTimes) {
+              ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(startX, curY);
+              ctx.lineTo(startX + blockW, curY);
+              ctx.stroke();
+              curY += 45 * s;
 
-            // 3-column stats row
-            if (config.showTarget || config.showTimes) {
-              drawStatsRow(
-                startX, curY, blockW,
-                'POLA', planLabel,
-                'MULAI', startStr,
-                'SELESAI', endStr,
-                mainColor, 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.22)', s
-              );
+              drawStatsRow(startX, curY, blockW, showTarget, showTimes, mainColor, 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.22)', s);
               curY += 80 * s;
             }
 
-            // Footer
-            if (config.showDate) {
+            if (showDate) {
               ctx.textAlign = 'center';
               ctx.font = '700 ' + Math.round(20 * s) + 'px ' + sansFont;
               ctx.fillStyle = 'rgba(255,255,255,0.85)';
@@ -364,13 +357,11 @@
             }
 
           } else if (template === 'MODERN_GRADIENT') {
-            // 2. MODERN_GRADIENT — Strava Iconic Activity Card
             var cardW = 860 * s;
             var cardH = 500 * s;
             var cardX = centerX - cardW / 2;
             var cardY = centerY - cardH / 2;
 
-            // Frosted Card
             ctx.fillStyle = 'rgba(16, 18, 22, 0.90)';
             roundRect(cardX, cardY, cardW, cardH, 36 * s);
             ctx.fill();
@@ -380,8 +371,7 @@
 
             var curY = cardY + 50 * s;
 
-            // Header
-            if (config.showBranding) {
+            if (showBranding) {
               drawStravaMark(cardX + 45 * s, curY - 14 * s, 30 * s, '#FC5200');
               ctx.textAlign = 'left';
               ctx.textBaseline = 'middle';
@@ -390,7 +380,6 @@
               ctx.fillText('HEULA', cardX + 85 * s, curY + 2 * s);
             }
 
-            // Pill badge: FASTING COMPLETED
             var pillW = 220 * s;
             var pillH = 42 * s;
             var pillX = cardX + cardW - 45 * s - pillW;
@@ -408,7 +397,6 @@
 
             curY += 65 * s;
 
-            // Hero duration
             ctx.textAlign = 'center';
             ctx.font = '700 ' + Math.round(19 * s) + 'px ' + sansFont;
             ctx.fillStyle = 'rgba(255,255,255,0.65)';
@@ -416,32 +404,26 @@
 
             curY += 85 * s;
             ctx.font = '900 ' + Math.round(155 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = mainColor;
             ctx.fillText(durFormatted, centerX, curY);
 
             curY += 80 * s;
-            // Divider
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(cardX + 45 * s, curY);
-            ctx.lineTo(cardX + cardW - 45 * s, curY);
-            ctx.stroke();
 
-            curY += 45 * s;
-            // Stats 3-column
-            var statsW = cardW - 90 * s;
-            var statsX = cardX + 45 * s;
-            drawStatsRow(
-              statsX, curY, statsW,
-              'POLA', planLabel,
-              'MULAI', startStr,
-              'SELESAI', endStr,
-              '#FFFFFF', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.12)', s
-            );
+            if (showTarget || showTimes) {
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(cardX + 45 * s, curY);
+              ctx.lineTo(cardX + cardW - 45 * s, curY);
+              ctx.stroke();
 
-            if (config.showDate) {
-              curY += 85 * s;
+              curY += 45 * s;
+              drawStatsRow(cardX + 45 * s, curY, cardW - 90 * s, showTarget, showTimes, mainColor, 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.12)', s);
+              curY += 40 * s;
+            }
+
+            if (showDate) {
+              curY += 45 * s;
               ctx.textAlign = 'center';
               ctx.font = '600 ' + Math.round(19 * s) + 'px ' + sansFont;
               ctx.fillStyle = 'rgba(255,255,255,0.45)';
@@ -449,7 +431,6 @@
             }
 
           } else if (template === 'DARK_MODE') {
-            // 3. DARK_MODE — Strava Stealth Matte Black Edition
             var cardW = 860 * s;
             var cardH = 500 * s;
             var cardX = centerX - cardW / 2;
@@ -464,32 +445,32 @@
 
             var curY = cardY + 50 * s;
 
-            // Header with accent bar
-            ctx.fillStyle = '#FC5200';
-            roundRect(cardX + 45 * s, curY - 14 * s, 6 * s, 28 * s, 3 * s);
-            ctx.fill();
+            if (showBranding) {
+              ctx.fillStyle = '#FC5200';
+              roundRect(cardX + 45 * s, curY - 14 * s, 6 * s, 28 * s, 3 * s);
+              ctx.fill();
 
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.font = '900 ' + Math.round(22 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillText('INTERMITTENT FASTING', cardX + 62 * s, curY + 1 * s);
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.font = '900 ' + Math.round(22 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText('INTERMITTENT FASTING', cardX + 62 * s, curY + 1 * s);
 
-            ctx.textAlign = 'right';
-            ctx.font = '800 ' + Math.round(20 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#FC5200';
-            ctx.fillText('HEULA PRO', cardX + cardW - 45 * s, curY + 1 * s);
+              ctx.textAlign = 'right';
+              ctx.font = '800 ' + Math.round(20 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#FC5200';
+              ctx.fillText('HEULA PRO', cardX + cardW - 45 * s, curY + 1 * s);
+              curY += 75 * s;
+            } else {
+              curY += 35 * s;
+            }
 
-            curY += 75 * s;
-
-            // Hero duration
             ctx.textAlign = 'center';
             ctx.font = '900 ' + Math.round(155 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = mainColor;
             ctx.fillText(hours + 'j ' + durMinsStr + 'm', centerX, curY);
 
             curY += 70 * s;
-            // Green Status Pill
             var statusW = 340 * s;
             var statusH = 40 * s;
             var statusX = centerX - statusW / 2;
@@ -507,41 +488,48 @@
             ctx.fillText('● 100% TARGET PUASA TUNTAS', centerX, curY + 1 * s);
 
             curY += 55 * s;
-            // Divider
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(cardX + 45 * s, curY);
-            ctx.lineTo(cardX + cardW - 45 * s, curY);
-            ctx.stroke();
 
-            curY += 45 * s;
-            // 3 Boxed Mini Pills
-            var colW = (cardW - 120 * s) / 3;
-            var labels = ['POLA', 'MULAI', 'SELESAI'];
-            var vals = [planLabel, startStr, endStr];
-            for (var i = 0; i < 3; i++) {
-              var bx = cardX + 45 * s + i * (colW + 15 * s);
-              var by = curY - 10 * s;
-              var bh = 76 * s;
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-              roundRect(bx, by, colW, bh, 18 * s);
-              ctx.fill();
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            if (showTarget || showTimes) {
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
               ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(cardX + 45 * s, curY);
+              ctx.lineTo(cardX + cardW - 45 * s, curY);
               ctx.stroke();
 
-              ctx.textAlign = 'center';
-              ctx.font = '700 ' + Math.round(16 * s) + 'px ' + sansFont;
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.50)';
-              ctx.fillText(labels[i], bx + colW / 2, by + 22 * s);
-              ctx.font = '800 ' + Math.round(28 * s) + 'px ' + sansFont;
-              ctx.fillStyle = '#FFFFFF';
-              ctx.fillText(vals[i], bx + colW / 2, by + 52 * s);
+              curY += 45 * s;
+
+              var items = [];
+              if (showTarget) items.push({ label: 'POLA', val: planLabel });
+              if (showTimes) {
+                items.push({ label: 'MULAI', val: startStr });
+                items.push({ label: 'SELESAI', val: endStr });
+              }
+
+              var totalPillW = cardW - 90 * s;
+              var colW = (totalPillW - (items.length - 1) * (15 * s)) / items.length;
+              for (var i = 0; i < items.length; i++) {
+                var bx = cardX + 45 * s + i * (colW + 15 * s);
+                var by = curY - 10 * s;
+                var bh = 76 * s;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                roundRect(bx, by, colW, bh, 18 * s);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.textAlign = 'center';
+                ctx.font = '700 ' + Math.round(16 * s) + 'px ' + sansFont;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.50)';
+                ctx.fillText(items[i].label, bx + colW / 2, by + 22 * s);
+                ctx.font = '800 ' + Math.round(28 * s) + 'px ' + sansFont;
+                ctx.fillStyle = mainColor;
+                ctx.fillText(items[i].val, bx + colW / 2, by + 52 * s);
+              }
             }
 
           } else if (template === 'GLASS_STYLE') {
-            // 4. GLASS_STYLE — Apple Fitness / Strava Frosted Liquid Glass
             var cardW = 860 * s;
             var cardH = 500 * s;
             var cardX = centerX - cardW / 2;
@@ -556,21 +544,22 @@
 
             var curY = cardY + 52 * s;
 
-            // Frosted Pill Header
-            var pillW = 280 * s;
-            var pillH = 42 * s;
-            var pillX = cardX + 45 * s;
-            var pillY = curY - pillH / 2;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-            roundRect(pillX, pillY, pillW, pillH, 21 * s);
-            ctx.fill();
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = '800 ' + Math.round(18 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillText('⚡ HEULA ATHLETICS', pillX + pillW / 2, curY + 1 * s);
+            if (showBranding) {
+              var pillW = 280 * s;
+              var pillH = 42 * s;
+              var pillX = cardX + 45 * s;
+              var pillY = curY - pillH / 2;
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+              roundRect(pillX, pillY, pillW, pillH, 21 * s);
+              ctx.fill();
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.font = '800 ' + Math.round(18 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText('⚡ HEULA ATHLETICS', pillX + pillW / 2, curY + 1 * s);
+            }
 
-            if (config.showDate) {
+            if (showDate) {
               ctx.textAlign = 'right';
               ctx.font = '700 ' + Math.round(19 * s) + 'px ' + sansFont;
               ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
@@ -579,12 +568,11 @@
 
             curY += 75 * s;
 
-            // Giant duration
             ctx.textAlign = 'center';
             ctx.shadowColor = 'rgba(0,0,0,0.35)';
             ctx.shadowBlur = 12;
             ctx.font = '900 ' + Math.round(155 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = mainColor;
             ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, curY);
             ctx.shadowBlur = 0;
 
@@ -594,46 +582,40 @@
             ctx.fillText('Target ' + planLabel + ' Selesai Sempurna', centerX, curY);
 
             curY += 45 * s;
-            // Glass Pill stats container
-            var statBoxW = cardW - 80 * s;
-            var statBoxH = 88 * s;
-            var statBoxX = centerX - statBoxW / 2;
-            var statBoxY = curY;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-            roundRect(statBoxX, statBoxY, statBoxW, statBoxH, 24 * s);
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
 
-            drawStatsRow(
-              statBoxX, statBoxY + 28 * s, statBoxW,
-              'POLA', planLabel,
-              'MULAI', startStr,
-              'SELESAI', endStr,
-              '#FFFFFF', 'rgba(255, 255, 255, 0.70)', 'rgba(255, 255, 255, 0.18)', s
-            );
+            if (showTarget || showTimes) {
+              var statBoxW = cardW - 80 * s;
+              var statBoxH = 88 * s;
+              var statBoxX = centerX - statBoxW / 2;
+              var statBoxY = curY;
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+              roundRect(statBoxX, statBoxY, statBoxW, statBoxH, 24 * s);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+              drawStatsRow(statBoxX, statBoxY + 28 * s, statBoxW, showTarget, showTimes, mainColor, 'rgba(255, 255, 255, 0.70)', 'rgba(255, 255, 255, 0.18)', s);
+            }
 
           } else if (template === 'TYPOGRAPHY') {
-            // 5. TYPOGRAPHY — Nike / Strava Big Athletic Poster
             var blockW = 840 * s;
             var startX = centerX - blockW / 2;
             var curY = centerY - 175 * s;
 
-            // Accent line + Title
-            ctx.fillStyle = '#FC5200';
-            roundRect(startX, curY - 14 * s, 6 * s, 32 * s, 3 * s);
-            ctx.fill();
+            if (showBranding) {
+              ctx.fillStyle = '#FC5200';
+              roundRect(startX, curY - 14 * s, 6 * s, 32 * s, 3 * s);
+              ctx.fill();
 
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.font = '900 ' + Math.round(24 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#FC5200';
-            ctx.fillText('HEULA // FASTING MILESTONE', startX + 18 * s, curY + 2 * s);
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.font = '900 ' + Math.round(24 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#FC5200';
+              ctx.fillText('HEULA // FASTING MILESTONE', startX + 18 * s, curY + 2 * s);
+              curY += 75 * s;
+            }
 
-            curY += 75 * s;
-
-            // Giant number 16 + stacked texts
             var numStr = String(hours);
             ctx.font = '900 ' + Math.round(220 * s) + 'px ' + sansFont;
             var numW = ctx.measureText(numStr).width;
@@ -655,23 +637,14 @@
 
             curY += 190 * s;
 
-            // Thick accent divider
-            ctx.fillStyle = '#FC5200';
-            ctx.fillRect(startX, curY, blockW, 4 * s);
-
-            curY += 40 * s;
-
-            // Tabular stats
-            drawStatsRow(
-              startX, curY, blockW,
-              'TARGET', planLabel,
-              'WAKTU', startStr + ' → ' + endStr,
-              'TANGGAL', dateStr,
-              mainColor, 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.22)', s
-            );
+            if (showTarget || showTimes) {
+              ctx.fillStyle = '#FC5200';
+              ctx.fillRect(startX, curY, blockW, 4 * s);
+              curY += 40 * s;
+              drawStatsRow(startX, curY, blockW, showTarget, showTimes, mainColor, 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.22)', s);
+            }
 
           } else if (template === 'EDITORIAL') {
-            // 6. EDITORIAL — Strava Summit & Tracksmith Editorial Journal
             var cardW = 860 * s;
             var cardH = 500 * s;
             var cardX = centerX - cardW / 2;
@@ -686,21 +659,25 @@
 
             var curY = cardY + 50 * s;
 
-            // Header
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = '400 ' + Math.round(22 * s) + 'px ' + serifFont;
-            ctx.fillStyle = 'rgba(255,255,255,0.75)';
-            ctx.fillText('—  HEULA ATHLETIC JOURNAL  —', centerX, curY);
+            if (showBranding) {
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.font = '400 ' + Math.round(22 * s) + 'px ' + serifFont;
+              ctx.fillStyle = 'rgba(255,255,255,0.75)';
+              ctx.fillText('—  HEULA ATHLETIC JOURNAL  —', centerX, curY);
+              curY += 38 * s;
+            }
 
-            curY += 38 * s;
-            ctx.font = '600 ' + Math.round(16 * s) + 'px ' + sansFont;
-            ctx.fillStyle = 'rgba(255,255,255,0.45)';
-            ctx.fillText('VOLUME 24  •  ' + dateStr, centerX, curY);
+            if (showDate) {
+              ctx.font = '600 ' + Math.round(16 * s) + 'px ' + sansFont;
+              ctx.fillStyle = 'rgba(255,255,255,0.45)';
+              ctx.fillText('VOLUME 24  •  ' + dateStr, centerX, curY);
+              curY += 40 * s;
+            }
 
-            curY += 80 * s;
+            curY += 40 * s;
             ctx.font = '300 ' + Math.round(150 * s) + 'px ' + serifFont;
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = mainColor;
             ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, curY);
 
             curY += 75 * s;
@@ -708,24 +685,19 @@
             ctx.fillStyle = 'rgba(255,255,255,0.80)';
             ctx.fillText('Aktivitas Berpuasa Terverifikasi', centerX, curY);
 
-            curY += 45 * s;
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.beginPath();
-            ctx.moveTo(cardX + 60 * s, curY);
-            ctx.lineTo(cardX + cardW - 60 * s, curY);
-            ctx.stroke();
+            if (showTarget || showTimes) {
+              curY += 45 * s;
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+              ctx.beginPath();
+              ctx.moveTo(cardX + 60 * s, curY);
+              ctx.lineTo(cardX + cardW - 60 * s, curY);
+              ctx.stroke();
 
-            curY += 42 * s;
-            drawStatsRow(
-              cardX + 60 * s, curY, cardW - 120 * s,
-              'POLA', planLabel,
-              'MULAI', startStr,
-              'SELESAI', endStr,
-              '#FFFFFF', 'rgba(255,255,255,0.50)', 'rgba(255,255,255,0.15)', s
-            );
+              curY += 42 * s;
+              drawStatsRow(cardX + 60 * s, curY, cardW - 120 * s, showTarget, showTimes, mainColor, 'rgba(255,255,255,0.50)', 'rgba(255,255,255,0.15)', s);
+            }
 
           } else if (template === 'NEON') {
-            // 7. NEON — Strava Night Run / Cyber Volt
             var cardW = 860 * s;
             var cardH = 500 * s;
             var cardX = centerX - cardW / 2;
@@ -740,25 +712,27 @@
 
             var curY = cardY + 50 * s;
 
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.font = '900 ' + Math.round(24 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#CCFF00';
-            ctx.fillText('⚡ HEULA NIGHT FAST', cardX + 45 * s, curY);
+            if (showBranding) {
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.font = '900 ' + Math.round(24 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#CCFF00';
+              ctx.fillText('⚡ HEULA NIGHT FAST', cardX + 45 * s, curY);
 
-            ctx.textAlign = 'right';
-            ctx.font = '800 ' + Math.round(20 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#00F0FF';
-            ctx.fillText('RECORD: UNLOCKED', cardX + cardW - 45 * s, curY);
+              ctx.textAlign = 'right';
+              ctx.font = '800 ' + Math.round(20 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#00F0FF';
+              ctx.fillText('RECORD: UNLOCKED', cardX + cardW - 45 * s, curY);
+              curY += 80 * s;
+            } else {
+              curY += 40 * s;
+            }
 
-            curY += 80 * s;
-
-            // Glowing main duration
             ctx.textAlign = 'center';
             ctx.shadowColor = '#CCFF00';
             ctx.shadowBlur = 22;
             ctx.font = '900 ' + Math.round(160 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = mainColor;
             ctx.fillText(durFormatted, centerX, curY);
             ctx.shadowBlur = 0;
 
@@ -767,30 +741,26 @@
             ctx.fillStyle = '#CCFF00';
             ctx.fillText('TARGET ' + planLabel + ' COMPLETED', centerX, curY);
 
-            curY += 50 * s;
-            ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(cardX + 45 * s, curY);
-            ctx.lineTo(cardX + cardW - 45 * s, curY);
-            ctx.stroke();
+            if (showTarget || showTimes) {
+              curY += 50 * s;
+              ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(cardX + 45 * s, curY);
+              ctx.lineTo(cardX + cardW - 45 * s, curY);
+              ctx.stroke();
 
-            curY += 45 * s;
-            drawStatsRow(
-              cardX + 45 * s, curY, cardW - 90 * s,
-              'POLA', planLabel,
-              'MULAI', startStr,
-              'SELESAI', endStr,
-              '#FFFFFF', '#CCFF00', 'rgba(0, 240, 255, 0.30)', s
-            );
+              curY += 45 * s;
+              drawStatsRow(cardX + 45 * s, curY, cardW - 90 * s, showTarget, showTimes, mainColor, '#CCFF00', 'rgba(0, 240, 255, 0.30)', s);
+            }
 
           } else {
-            // 8. CLEAN_WHITE — Pure White Floating Athletic Overlay
+            // CLEAN_WHITE
             var blockW = 840 * s;
             var startX = centerX - blockW / 2;
             var curY = centerY - 190 * s;
 
-            if (config.showBranding) {
+            if (showBranding) {
               drawStravaMark(startX, curY - 14 * s, 32 * s, '#FFFFFF');
               ctx.textAlign = 'left';
               ctx.textBaseline = 'middle';
@@ -826,30 +796,27 @@
 
             ctx.shadowBlur = 16;
             ctx.font = '900 ' + Math.round(185 * s) + 'px ' + sansFont;
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = mainColor;
             ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, curY);
             curY += 105 * s;
 
             ctx.shadowBlur = 0;
-            ctx.strokeStyle = 'rgba(255,255,255,0.40)';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(startX, curY);
-            ctx.lineTo(startX + blockW, curY);
-            ctx.stroke();
-            curY += 45 * s;
 
-            ctx.shadowBlur = 8;
-            drawStatsRow(
-              startX, curY, blockW,
-              'POLA', planLabel,
-              'MULAI', startStr,
-              'SELESAI', endStr,
-              '#FFFFFF', 'rgba(255,255,255,0.80)', 'rgba(255,255,255,0.35)', s
-            );
-            curY += 80 * s;
+            if (showTarget || showTimes) {
+              ctx.strokeStyle = 'rgba(255,255,255,0.40)';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.moveTo(startX, curY);
+              ctx.lineTo(startX + blockW, curY);
+              ctx.stroke();
+              curY += 45 * s;
 
-            if (config.showDate) {
+              ctx.shadowBlur = 8;
+              drawStatsRow(startX, curY, blockW, showTarget, showTimes, mainColor, 'rgba(255,255,255,0.80)', 'rgba(255,255,255,0.35)', s);
+              curY += 80 * s;
+            }
+
+            if (showDate) {
               ctx.textAlign = 'center';
               ctx.font = '700 ' + Math.round(20 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#FFFFFF';

@@ -2,15 +2,19 @@ package id.heula.presentation.screen.history
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
@@ -21,10 +25,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import id.heula.domain.model.FastingSession
 import id.heula.domain.model.Mood
 import id.heula.presentation.component.icon.getMoodVisual
@@ -516,230 +523,324 @@ private fun EditSessionDialog(
     val startStr = "${startLdt.hour.toString().padStart(2, '0')}:${startLdt.minute.toString().padStart(2, '0')}"
     val endStr = "${endLdt.hour.toString().padStart(2, '0')}:${endLdt.minute.toString().padStart(2, '0')}"
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = if (isEnglish) "Edit Fasting Record" else "Edit Catatan Puasa",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                )
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                ) {
-                    Text(
-                        text = session.planLabel,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                    )
-                }
-            }
-        },
-        text = {
-            Column(
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val isWide = maxWidth >= 620.dp
+
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    ),
+                contentAlignment = if (isWide) Alignment.Center else Alignment.BottomCenter,
             ) {
-                // Section 1: Duration & Adjust Time
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                    modifier = Modifier
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}, // Prevent dismiss when tapping inside content
+                        )
+                        .then(
+                            if (isWide) {
+                                Modifier
+                                    .width(540.dp)
+                                    .fillMaxHeight(0.85f)
+                                    .padding(vertical = 24.dp)
+                            } else {
+                                Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(0.90f)
+                            }
+                        ),
+                    shape = if (isWide) RoundedCornerShape(26.dp) else RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 16.dp,
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = if (isEnglish) "Duration" else "Durasi Puasa",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "${durationHours}j ${durationMins}m" + if (isCompleted) " (Target Tuntas)" else "",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isCompleted) BrandPrimary else MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
-                        )
-
-                        // Adjust Start Time
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column {
-                                Text(
-                                    text = if (isEnglish) "Start Time" else "Waktu Mulai",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = startStr,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                QuickTimeButton("-30m") {
-                                    startMs = (startMs - 1800000L).coerceAtMost(endMs - 60000L)
-                                }
-                                QuickTimeButton("+30m") {
-                                    startMs = (startMs + 1800000L).coerceAtMost(endMs - 60000L)
-                                }
-                            }
-                        }
-
-                        // Adjust End Time
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column {
-                                Text(
-                                    text = if (isEnglish) "End Time" else "Waktu Selesai",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = endStr,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                QuickTimeButton("-30m") {
-                                    endMs = (endMs - 1800000L).coerceAtLeast(startMs + 60000L)
-                                }
-                                QuickTimeButton("+30m") {
-                                    endMs = endMs + 1800000L
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Section 2: Mood Selection
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = if (isEnglish) "How did you feel?" else "Bagaimana perasaanmu selama puasa?",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Mood.entries.forEach { mood ->
-                            val visual = getMoodVisual(mood)
-                            val isSelected = selectedMood == mood
-                            Surface(
-                                onClick = { selectedMood = if (isSelected) null else mood },
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (isSelected) BrandPrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                                border = if (isSelected) BorderStroke(1.5.dp, BrandPrimary) else null,
+                        // Grabber bar (prominent in mobile bottom sheet view)
+                        if (!isWide) {
+                            Box(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .height(54.dp),
+                                    .align(Alignment.CenterHorizontally)
+                                    .padding(bottom = 12.dp)
+                                    .size(width = 38.dp, height = 5.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
+                            )
+                        }
+
+                        // Header with Title, Plan Badge, and Close Button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = if (isEnglish) "Edit Fasting Record" else "Edit Catatan Puasa",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                ) {
+                                    Text(
+                                        text = session.planLabel,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    )
+                                }
+                            }
+
+                            // Circular close button
+                            Surface(
+                                onClick = onDismiss,
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.size(30.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Tutup",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Scrollable content area
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            // Section 1: Duration & Adjust Time
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
                             ) {
                                 Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center,
-                                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
-                                    Icon(
-                                        imageVector = visual.icon,
-                                        contentDescription = visual.label,
-                                        tint = if (isSelected) BrandPrimary else visual.color,
-                                        modifier = Modifier.size(18.dp),
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = if (isEnglish) "Duration" else "Durasi Puasa",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text = "${durationHours}j ${durationMins}m" + if (isCompleted) " (Target Tuntas)" else "",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isCompleted) BrandPrimary else MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
+
+                                    HorizontalDivider(
+                                        thickness = 0.5.dp,
+                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
                                     )
-                                    Spacer(modifier = Modifier.height(3.dp))
-                                    Text(
-                                        text = visual.label,
-                                        fontSize = 10.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) BrandPrimary else MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                    )
+
+                                    // Adjust Start Time
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = if (isEnglish) "Start Time" else "Waktu Mulai",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Text(
+                                                text = startStr,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                            )
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            QuickTimeButton("-30m") {
+                                                startMs = (startMs - 1800000L).coerceAtMost(endMs - 60000L)
+                                            }
+                                            QuickTimeButton("+30m") {
+                                                startMs = (startMs + 1800000L).coerceAtMost(endMs - 60000L)
+                                            }
+                                        }
+                                    }
+
+                                    // Adjust End Time
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = if (isEnglish) "End Time" else "Waktu Selesai",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Text(
+                                                text = endStr,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                            )
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            QuickTimeButton("-30m") {
+                                                endMs = (endMs - 1800000L).coerceAtLeast(startMs + 60000L)
+                                            }
+                                            QuickTimeButton("+30m") {
+                                                endMs = endMs + 1800000L
+                                            }
+                                        }
+                                    }
                                 }
+                            }
+
+                            // Section 2: Mood Selection
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = if (isEnglish) "How did you feel?" else "Bagaimana perasaanmu selama puasa?",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Mood.entries.forEach { mood ->
+                                        val visual = getMoodVisual(mood)
+                                        val isSelected = selectedMood == mood
+                                        Surface(
+                                            onClick = { selectedMood = if (isSelected) null else mood },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (isSelected) BrandPrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                            border = if (isSelected) BorderStroke(1.5.dp, BrandPrimary) else null,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(54.dp),
+                                        ) {
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.Center,
+                                                modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                                            ) {
+                                                Icon(
+                                                    imageVector = visual.icon,
+                                                    contentDescription = visual.label,
+                                                    tint = if (isSelected) BrandPrimary else visual.color,
+                                                    modifier = Modifier.size(18.dp),
+                                                )
+                                                Spacer(modifier = Modifier.height(3.dp))
+                                                Text(
+                                                    text = visual.label,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    color = if (isSelected) BrandPrimary else MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Section 3: Notes
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = if (isEnglish) "Journal & Notes" else "Catatan & Menu Buka Puasa",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                OutlinedTextField(
+                                    value = noteText,
+                                    onValueChange = { noteText = it },
+                                    placeholder = {
+                                        Text(
+                                            text = if (isEnglish) "Jot down your meal or mood..." else "Tulis catatan atau menu buka puasa...",
+                                            fontSize = 13.sp,
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    minLines = 2,
+                                    maxLines = 4,
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Bottom Actions (Cancel & Save)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            OutlinedButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(14.dp),
+                            ) {
+                                Text(if (isEnglish) "Cancel" else "Batal")
+                            }
+
+                            Button(
+                                onClick = {
+                                    val updated = session.copy(
+                                        startMs = startMs,
+                                        endMs = endMs,
+                                        durationMs = durationMs,
+                                        completed = isCompleted,
+                                        mood = selectedMood,
+                                        note = noteText.ifBlank { null },
+                                    )
+                                    onSave(updated)
+                                },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                            ) {
+                                Text(
+                                    text = if (isEnglish) "Save" else "Simpan",
+                                    fontWeight = FontWeight.Bold,
+                                )
                             }
                         }
                     }
                 }
-
-                // Section 3: Notes
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = if (isEnglish) "Journal & Notes" else "Catatan & Menu Buka Puasa",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    OutlinedTextField(
-                        value = noteText,
-                        onValueChange = { noteText = it },
-                        placeholder = {
-                            Text(
-                                text = if (isEnglish) "Jot down your meal or mood..." else "Tulis catatan atau menu buka puasa...",
-                                fontSize = 13.sp,
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        minLines = 2,
-                        maxLines = 4,
-                    )
-                }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val updated = session.copy(
-                        startMs = startMs,
-                        endMs = endMs,
-                        durationMs = durationMs,
-                        completed = isCompleted,
-                        mood = selectedMood,
-                        note = noteText.ifBlank { null },
-                    )
-                    onSave(updated)
-                },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-            ) {
-                Text(
-                    text = if (isEnglish) "Save" else "Simpan",
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(if (isEnglish) "Cancel" else "Batal")
-            }
-        },
-        shape = RoundedCornerShape(22.dp),
-    )
+        }
+    }
 }
