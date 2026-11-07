@@ -81,7 +81,7 @@
       };
 
       window.heulaFirestore = {
-        projectId: 'heula-c9a5f',
+        projectId: 'heula-514007',
         upload: function(uid, jsonStr) {
           var url = 'https://firestore.googleapis.com/v1/projects/' + this.projectId + '/databases/(default)/documents/users/' + uid + '?updateMask.fieldPaths=payload&updateMask.fieldPaths=updatedAt';
           fetch(url, {

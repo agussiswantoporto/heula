@@ -12,7 +12,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class AndroidCloudSyncService : CloudSyncService {
-    private val projectId = "heula-c9a5f"
+    private val projectId = "heula-514007"
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun uploadUserData(uid: String, data: UserCloudData): Result<Unit> = withContext(Dispatchers.IO) {
