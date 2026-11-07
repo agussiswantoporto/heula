@@ -253,6 +253,10 @@ class AppStore(
         scope.launch { sessionRepository.delete(id) }
     }
 
+    fun updateSession(session: FastingSession) {
+        scope.launch { sessionRepository.update(session) }
+    }
+
     fun updateMoodNote(sessionId: Long, mood: Mood?, note: String?) {
         scope.launch { sessionRepository.setMoodNote(sessionId, mood, note) }
     }

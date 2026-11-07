@@ -9,5 +9,6 @@ interface SessionRepository {
     suspend fun add(session: FastingSession): Long
     suspend fun delete(id: Long): Boolean
     suspend fun setMoodNote(id: Long, mood: Mood?, note: String?): Boolean
+    suspend fun update(session: FastingSession): Boolean
     suspend fun clearAll()
 }

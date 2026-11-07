@@ -62,6 +62,17 @@ class SessionRepositoryImpl(
         return false
     }
 
+    override suspend fun update(session: FastingSession): Boolean {
+        val current = _flow.value.toMutableList()
+        val idx = current.indexOfFirst { it.id == session.id }
+        if (idx >= 0) {
+            current[idx] = session
+            persist(current)
+            return true
+        }
+        return false
+    }
+
     override suspend fun clearAll() {
         persist(emptyList())
     }
