@@ -117,3 +117,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 }
+
+val copyWasmToDist = tasks.register<Copy>("copyWasmToDist") {
+    from(layout.buildDirectory.dir("dist/wasmJs/productionExecutable"))
+    into(rootProject.layout.projectDirectory.dir("dist"))
+}
+
+tasks.matching { it.name == "wasmJsBrowserDistribution" }.configureEach {
+    finalizedBy(copyWasmToDist)
+}

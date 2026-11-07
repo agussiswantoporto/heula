@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heula - Teman Puasa Berkala</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #F2F3F5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+    </style>
+    <!-- Google Identity Services (GIS) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      window.heulaGoogleAuth = {
+        clientId: '60875023761-ph4ha1o3p9anq05qikk5vgl2j3ct6opj.apps.googleusercontent.com',
+        tokenClient: null,
+        init: function() {
+          if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+            this.tokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: this.clientId,
+              scope: 'email profile openid',
+              callback: (tokenResponse) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                  fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { 'Authorization': 'Bearer ' + tokenResponse.access_token }
+                  })
+                  .then(function(res) { return res.json(); })
+                  .then(function(data) {
+                    var result = JSON.stringify({
+                      uid: data.sub || '',
+                      email: data.email || '',
+                      displayName: data.name || '',
+                      photoUrl: data.picture || ''
+                    });
+                    window.localStorage.setItem('heula_google_auth_result', result);
+                  })
+                  .catch(function(err) {
+                    console.error('Failed to fetch Google userinfo:', err);
+                  });
+                } else if (tokenResponse && tokenResponse.error) {
+                  console.error('Google token error:', tokenResponse.error);
+                }
+              }
+            });
+          }
+        },
+        signIn: function() {
+          try {
+            if (!this.tokenClient) {
+              this.init();
+            }
+            if (this.tokenClient) {
+              this.tokenClient.requestAccessToken({ prompt: 'consent' });
+            } else {
+              var self = this;
+              setTimeout(function() {
+                self.init();
+                if (self.tokenClient) {
+                  self.tokenClient.requestAccessToken({ prompt: 'consent' });
+                } else {
+                  console.warn('Google Identity Services SDK is still loading or blocked by browser/extension.');
+                }
+              }, 400);
+            }
+          } catch (e) {
+            console.error('Google Sign-In trigger error:', e);
+          }
+        },
+        signOut: function() {
+          try {
+            window.localStorage.removeItem('heula_google_auth_result');
+          } catch (e) {}
+        }
+      };
+
+      window.heulaFirestore = {
+        projectId: 'heula-514007',
+        upload: function(uid, email, displayName, photoUrl, jsonStr) {
+          var url = 'https://firestore.googleapis.com/v1/projects/' + this.projectId + '/databases/(default)/documents/users/' + uid + '?updateMask.fieldPaths=payload&updateMask.fieldPaths=updatedAt&updateMask.fieldPaths=email&updateMask.fieldPaths=displayName&updateMask.fieldPaths=photoUrl';
+          fetch(url, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                email: { stringValue: email || '' },
+                displayName: { stringValue: displayName || '' },
+                photoUrl: { stringValue: photoUrl || '' },
+                payload: { stringValue: jsonStr },
+                updatedAt: { integerValue: String(Date.now()) }
+              }
+            })
+          })
+          .then(function(res) {
+            if (!res.ok) throw new Error('Firestore error ' + res.status);
+            window.localStorage.setItem('heula_sync_upload_status', 'OK');
+          })
+          .catch(function(err) {
+            window.localStorage.setItem('heula_sync_upload_status', 'ERR:' + err.message);
+          });
+        },
+        download: function(uid) {
+          var url = 'https://firestore.googleapis.com/v1/projects/' + this.projectId + '/databases/(default)/documents/users/' + uid;
+          fetch(url)
+          .then(function(res) {
+            if (res.status === 404) {
+              window.localStorage.setItem('heula_sync_download_result', '__EMPTY__');
+              return null;
+            }
+            if (!res.ok) throw new Error('Firestore read error ' + res.status);
+            return res.json();
+          })
+          .then(function(doc) {
+            if (!doc) return;
+            if (!doc.fields || !doc.fields.payload) {
+              window.localStorage.setItem('heula_sync_download_result', '__EMPTY__');
+            } else {
+              window.localStorage.setItem('heula_sync_download_result', doc.fields.payload.stringValue);
+            }
+          })
+          .catch(function(err) {
+            window.localStorage.setItem('heula_sync_download_result', '__ERR__:' + err.message);
+          });
+        }
+      };
+    </script>
+</head>
+<body>
+    <script src="composeApp.js"></script>
+</body>
+</html>

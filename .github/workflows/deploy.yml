@@ -27,6 +27,11 @@ jobs:
       - name: Build Kotlin Wasm Production Bundle
         run: ./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon
 
+      - name: Prepare Dist Bundle for Vercel
+        run: |
+          mkdir -p dist
+          cp -r composeApp/build/dist/wasmJs/productionExecutable/* dist/
+
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:

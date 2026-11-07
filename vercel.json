@@ -1,6 +1,6 @@
 {
   "buildCommand": "echo 'Prebuilt Wasm bundle ready'",
-  "outputDirectory": "composeApp/build/dist/wasmJs/productionExecutable",
+  "outputDirectory": "dist",
   "cleanUrls": true,
   "headers": [
     {
