@@ -57,6 +57,7 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.health.connect.client)
+            implementation("com.microsoft.clarity:clarity-compose:3.+")
         }
 
         iosMain.dependencies {
