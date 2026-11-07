@@ -8,7 +8,7 @@ class AndroidGoogleAuthProvider(
     private val context: Context,
 ) : GoogleAuthProvider {
 
-    val webClientId = "60875023761-qgh2fpt5q2a2ohbup77trk36s2tog0ic.apps.googleusercontent.com"
+    val webClientId = "60875023761-ph4ha1o3p9anq05qikk5vgl2j3ct6opj.apps.googleusercontent.com"
 
     override suspend fun signIn(): Result<UserAccount> {
         return Result.failure(Exception("Menunggu registrasi SHA-1 Android di Google Cloud Console."))
