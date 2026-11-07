@@ -161,7 +161,7 @@
 
       window.heulaShareImage = {
         renderCanvas: function(session, config) {
-          var isStory = config.aspectRatio === 'STORY';
+          var isStory = !config || config.aspectRatio !== 'SQUARE';
           var W = 1080;
           var H = isStory ? 1920 : 1080;
 
@@ -173,7 +173,7 @@
           // 100% Pure Transparent Alpha Background
           ctx.clearRect(0, 0, W, H);
 
-          // Universal RoundRect helper compatible with all browsers & WebKit versions
+          // Universal RoundRect helper
           function roundRect(x, y, w, h, r) {
             ctx.beginPath();
             ctx.moveTo(x + r, y);
@@ -188,7 +188,34 @@
             ctx.closePath();
           }
 
-          // Compute time formats - matching Kotlin logic 1:1
+          // Strava Mark Helper (Athletic double chevron)
+          function drawStravaMark(x, y, size, color) {
+            ctx.save();
+            ctx.fillStyle = color;
+            var w = size * 0.72;
+            var h = size;
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.5, y);
+            ctx.lineTo(x + w, y + h * 0.52);
+            ctx.lineTo(x + w * 0.72, y + h * 0.52);
+            ctx.lineTo(x + w * 0.5, y + h * 0.26);
+            ctx.lineTo(x + w * 0.28, y + h * 0.52);
+            ctx.lineTo(x, y + h * 0.52);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.5, y + h * 0.44);
+            ctx.lineTo(x + w * 0.86, y + h);
+            ctx.lineTo(x + w * 0.64, y + h);
+            ctx.lineTo(x + w * 0.5, y + h * 0.74);
+            ctx.lineTo(x + w * 0.36, y + h);
+            ctx.lineTo(x + w * 0.14, y + h);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // Compute time formats
           var durMs = session.durationMs || (session.endMs - session.startMs) || 0;
           var totalMin = Math.floor(durMs / 60000);
           var hours = Math.floor(totalMin / 60);
@@ -202,327 +229,632 @@
           var startStr = pad(startDate.getHours()) + ':' + pad(startDate.getMinutes());
           var endStr = pad(endDate.getHours()) + ':' + pad(endDate.getMinutes());
 
-          var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+          var monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGS', 'SEP', 'OKT', 'NOV', 'DES'];
           var dateStr = endDate.getDate() + ' ' + monthNames[endDate.getMonth()] + ' ' + endDate.getFullYear();
 
           var template = config.template || 'MODERN_GRADIENT';
           var mainColor = config.textColorHex || '#FFFFFF';
           var planLabel = session.planLabel || '16:8';
 
-          ctx.save();
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-
           var centerX = W / 2;
-          var centerY = isStory ? 940 : 540;
+          var centerY = isStory ? 960 : 540;
           var s = isStory ? 1.0 : 0.85;
 
-          var sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Plus Jakarta Sans", "Inter", Roboto, sans-serif';
+          var sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Plus Jakarta Sans", "Inter", "Helvetica Neue", sans-serif';
           var serifFont = '"Playfair Display", "Georgia", "Times New Roman", serif';
 
+          function drawStatsRow(x, y, w, col1Title, col1Val, col2Title, col2Val, col3Title, col3Val, textColor, subColor, divColor, sVal) {
+            var colW = w / 3;
+            var c1 = x + colW * 0.5;
+            var c2 = x + colW * 1.5;
+            var c3 = x + colW * 2.5;
+
+            if (divColor) {
+              ctx.strokeStyle = divColor;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(x + colW, y - 10 * sVal);
+              ctx.lineTo(x + colW, y + 45 * sVal);
+              ctx.moveTo(x + colW * 2, y - 10 * sVal);
+              ctx.lineTo(x + colW * 2, y + 45 * sVal);
+              ctx.stroke();
+            }
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '700 ' + Math.round(18 * sVal) + 'px ' + sansFont;
+            ctx.fillStyle = subColor;
+            ctx.fillText(col1Title, c1, y);
+            ctx.font = '800 ' + Math.round(36 * sVal) + 'px ' + sansFont;
+            ctx.fillStyle = textColor;
+            ctx.fillText(col1Val, c1, y + 34 * sVal);
+
+            ctx.font = '700 ' + Math.round(18 * sVal) + 'px ' + sansFont;
+            ctx.fillStyle = subColor;
+            ctx.fillText(col2Title, c2, y);
+            ctx.font = '800 ' + Math.round(36 * sVal) + 'px ' + sansFont;
+            ctx.fillStyle = textColor;
+            ctx.fillText(col2Val, c2, y + 34 * sVal);
+
+            ctx.font = '700 ' + Math.round(18 * sVal) + 'px ' + sansFont;
+            ctx.fillStyle = subColor;
+            ctx.fillText(col3Title, c3, y);
+            ctx.font = '800 ' + Math.round(36 * sVal) + 'px ' + sansFont;
+            ctx.fillStyle = textColor;
+            ctx.fillText(col3Val, c3, y + 34 * sVal);
+          }
+
+          ctx.save();
+
           if (template === 'MINIMALIST') {
-            var items = [];
-            if (config.showBranding) items.push({ type: 'brand', text: 'H  E  U  L  A', font: '700 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 55 * s, color: mainColor });
-            items.push({ type: 'num', text: durFormatted, font: '900 ' + Math.round(180 * s) + 'px ' + sansFont, gap: 140 * s, color: mainColor });
-            items.push({ type: 'sub', text: 'JAM BERPUASA', font: '700 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 40 * s, color: mainColor });
-            items.push({ type: 'line', gap: 40 * s, color: mainColor });
-            if (config.showTarget) items.push({ type: 'target', text: 'Target ' + planLabel + ' • Selesai', font: '600 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 42 * s, color: mainColor });
-            if (config.showTimes) items.push({ type: 'times', text: startStr + ' — ' + endStr, font: '400 ' + Math.round(25 * s) + 'px ' + sansFont, gap: 38 * s, color: mainColor, alpha: 0.85 });
-            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: mainColor, alpha: 0.65 });
+            // 1. MINIMALIST — Strava Athletic Pure Overlay (No Box)
+            var blockW = 840 * s;
+            var startX = centerX - blockW / 2;
+            var curY = centerY - 190 * s;
 
-            var totalH = 0;
-            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
-            var startY = centerY - totalH / 2;
-            var curY = startY;
+            // Header
+            if (config.showBranding) {
+              drawStravaMark(startX, curY - 14 * s, 32 * s, '#FC5200');
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.font = '900 ' + Math.round(30 * s) + 'px ' + sansFont;
+              ctx.fillStyle = mainColor;
+              ctx.fillText('HEULA', startX + 34 * s, curY + 2 * s);
 
-            for (var i = 0; i < items.length; i++) {
-              var it = items[i];
-              if (it.type === 'line') {
-                ctx.fillStyle = it.color;
-                ctx.fillRect(centerX - (60 * s), curY, 120 * s, 3 * s);
-              } else {
-                ctx.font = it.font;
-                ctx.fillStyle = it.color;
-                ctx.globalAlpha = it.alpha || 1.0;
-                ctx.fillText(it.text, centerX, curY);
-                ctx.globalAlpha = 1.0;
-              }
-              curY += it.gap;
+              ctx.textAlign = 'right';
+              ctx.font = '700 ' + Math.round(18 * s) + 'px ' + sansFont;
+              ctx.fillStyle = 'rgba(255,255,255,0.75)';
+              ctx.fillText('INTERMITTENT FASTING', startX + blockW, curY + 2 * s);
+              curY += 38 * s;
+            }
+
+            // Top hairline
+            ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(startX, curY);
+            ctx.lineTo(startX + blockW, curY);
+            ctx.stroke();
+            curY += 50 * s;
+
+            // Hero
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '800 ' + Math.round(20 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FC5200';
+            ctx.fillText('WAKTU BERPUASA', centerX, curY);
+            curY += 100 * s;
+
+            // Giant duration with shadow
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 18;
+            ctx.font = '900 ' + Math.round(185 * s) + 'px ' + sansFont;
+            ctx.fillStyle = mainColor;
+            ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, curY);
+            ctx.shadowBlur = 0;
+            curY += 105 * s;
+
+            // Bottom hairline
+            ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(startX, curY);
+            ctx.lineTo(startX + blockW, curY);
+            ctx.stroke();
+            curY += 45 * s;
+
+            // 3-column stats row
+            if (config.showTarget || config.showTimes) {
+              drawStatsRow(
+                startX, curY, blockW,
+                'POLA', planLabel,
+                'MULAI', startStr,
+                'SELESAI', endStr,
+                mainColor, 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.22)', s
+              );
+              curY += 80 * s;
+            }
+
+            // Footer
+            if (config.showDate) {
+              ctx.textAlign = 'center';
+              ctx.font = '700 ' + Math.round(20 * s) + 'px ' + sansFont;
+              ctx.fillStyle = 'rgba(255,255,255,0.85)';
+              ctx.fillText(dateStr + '  •  TARGET PUASA TUNTAS ✓', centerX, curY + 15 * s);
             }
 
           } else if (template === 'MODERN_GRADIENT') {
-            var items = [];
-            if (config.showBranding) items.push({ type: 'pill', gap: 90 * s });
-            items.push({ type: 'num', text: durFormatted, font: '900 ' + Math.round(180 * s) + 'px ' + sansFont, gap: 145 * s, color: '#FFFFFF' });
-            items.push({ type: 'sub', text: 'BERHASIL BERPUASA', font: '800 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 55 * s, color: '#FC5200' });
+            // 2. MODERN_GRADIENT — Strava Iconic Activity Card
+            var cardW = 860 * s;
+            var cardH = 500 * s;
+            var cardX = centerX - cardW / 2;
+            var cardY = centerY - cardH / 2;
 
-            var hasMetrics = config.showTarget || config.showTimes;
-            if (hasMetrics) items.push({ type: 'card', gap: (120 + 35) * s });
-            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '500 ' + Math.round(24 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.85)' });
+            // Frosted Card
+            ctx.fillStyle = 'rgba(16, 18, 22, 0.90)';
+            roundRect(cardX, cardY, cardW, cardH, 36 * s);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
 
-            var totalH = 0;
-            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
-            var startY = centerY - totalH / 2;
-            var curY = startY;
+            var curY = cardY + 50 * s;
 
-            for (var i = 0; i < items.length; i++) {
-              var it = items[i];
-              if (it.type === 'pill') {
-                var pillW = 300 * s;
-                var pillH = 58 * s;
-                var pillX = centerX - pillW / 2;
-                var pillY = curY - pillH / 2;
-                var grad = ctx.createLinearGradient(pillX, 0, pillX + pillW, 0);
-                grad.addColorStop(0, '#FC5200');
-                grad.addColorStop(1, '#FF7A00');
-                ctx.fillStyle = grad;
-                roundRect(pillX, pillY, pillW, pillH, pillH / 2);
-                ctx.fill();
-                ctx.font = '800 ' + Math.round(24 * s) + 'px ' + sansFont;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillText('FASTING ACTIVE', centerX, curY);
-              } else if (it.type === 'card') {
-                var cardW = (config.showTarget && config.showTimes) ? (620 * s) : (380 * s);
-                var cardH = 120 * s;
-                var cardX = centerX - cardW / 2;
-                var cardY = curY - 20 * s;
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-                roundRect(cardX, cardY, cardW, cardH, 22 * s);
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
+            // Header
+            if (config.showBranding) {
+              drawStravaMark(cardX + 45 * s, curY - 14 * s, 30 * s, '#FC5200');
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.font = '900 ' + Math.round(28 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText('HEULA', cardX + 85 * s, curY + 2 * s);
+            }
 
-                if (config.showTarget && config.showTimes) {
-                  var c1 = cardX + cardW * 0.27;
-                  var c2 = cardX + cardW * 0.73;
-                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-                  ctx.lineWidth = 1;
-                  ctx.beginPath();
-                  ctx.moveTo(centerX, cardY + 20 * s);
-                  ctx.lineTo(centerX, cardY + cardH - 20 * s);
-                  ctx.stroke();
+            // Pill badge: FASTING COMPLETED
+            var pillW = 220 * s;
+            var pillH = 42 * s;
+            var pillX = cardX + cardW - 45 * s - pillW;
+            var pillY = curY - pillH / 2;
+            var grad = ctx.createLinearGradient(pillX, 0, pillX + pillW, 0);
+            grad.addColorStop(0, '#FC5200');
+            grad.addColorStop(1, '#FF7A00');
+            ctx.fillStyle = grad;
+            roundRect(pillX, pillY, pillW, pillH, pillH / 2);
+            ctx.fill();
+            ctx.textAlign = 'center';
+            ctx.font = '800 ' + Math.round(17 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('✓ TARGET TUNTAS', pillX + pillW / 2, curY + 1 * s);
 
-                  ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
-                  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                  ctx.fillText('POLA', c1, cardY + 36 * s);
-                  ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
-                  ctx.fillStyle = '#FFFFFF';
-                  ctx.fillText(planLabel, c1, cardY + 78 * s);
+            curY += 65 * s;
 
-                  ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
-                  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                  ctx.fillText('WAKTU', c2, cardY + 36 * s);
-                  ctx.font = '800 ' + Math.round(28 * s) + 'px ' + sansFont;
-                  ctx.fillStyle = '#FFFFFF';
-                  ctx.fillText(startStr + ' – ' + endStr, c2, cardY + 78 * s);
-                } else if (config.showTarget) {
-                  ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
-                  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                  ctx.fillText('POLA PUASA', centerX, cardY + 36 * s);
-                  ctx.font = '800 ' + Math.round(32 * s) + 'px ' + sansFont;
-                  ctx.fillStyle = '#FFFFFF';
-                  ctx.fillText(planLabel, centerX, cardY + 78 * s);
-                } else {
-                  ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
-                  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                  ctx.fillText('WAKTU PUASA', centerX, cardY + 36 * s);
-                  ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
-                  ctx.fillStyle = '#FFFFFF';
-                  ctx.fillText(startStr + ' – ' + endStr, centerX, cardY + 78 * s);
-                }
-              } else {
-                ctx.font = it.font;
-                ctx.fillStyle = it.color;
-                ctx.fillText(it.text, centerX, curY);
-              }
-              curY += it.gap;
+            // Hero duration
+            ctx.textAlign = 'center';
+            ctx.font = '700 ' + Math.round(19 * s) + 'px ' + sansFont;
+            ctx.fillStyle = 'rgba(255,255,255,0.65)';
+            ctx.fillText('TOTAL WAKTU BERPUASA', centerX, curY);
+
+            curY += 85 * s;
+            ctx.font = '900 ' + Math.round(155 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(durFormatted, centerX, curY);
+
+            curY += 80 * s;
+            // Divider
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cardX + 45 * s, curY);
+            ctx.lineTo(cardX + cardW - 45 * s, curY);
+            ctx.stroke();
+
+            curY += 45 * s;
+            // Stats 3-column
+            var statsW = cardW - 90 * s;
+            var statsX = cardX + 45 * s;
+            drawStatsRow(
+              statsX, curY, statsW,
+              'POLA', planLabel,
+              'MULAI', startStr,
+              'SELESAI', endStr,
+              '#FFFFFF', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.12)', s
+            );
+
+            if (config.showDate) {
+              curY += 85 * s;
+              ctx.textAlign = 'center';
+              ctx.font = '600 ' + Math.round(19 * s) + 'px ' + sansFont;
+              ctx.fillStyle = 'rgba(255,255,255,0.45)';
+              ctx.fillText(dateStr, centerX, curY);
+            }
+
+          } else if (template === 'DARK_MODE') {
+            // 3. DARK_MODE — Strava Stealth Matte Black Edition
+            var cardW = 860 * s;
+            var cardH = 500 * s;
+            var cardX = centerX - cardW / 2;
+            var cardY = centerY - cardH / 2;
+
+            ctx.fillStyle = 'rgba(10, 11, 14, 0.95)';
+            roundRect(cardX, cardY, cardW, cardH, 36 * s);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            var curY = cardY + 50 * s;
+
+            // Header with accent bar
+            ctx.fillStyle = '#FC5200';
+            roundRect(cardX + 45 * s, curY - 14 * s, 6 * s, 28 * s, 3 * s);
+            ctx.fill();
+
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 ' + Math.round(22 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('INTERMITTENT FASTING', cardX + 62 * s, curY + 1 * s);
+
+            ctx.textAlign = 'right';
+            ctx.font = '800 ' + Math.round(20 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FC5200';
+            ctx.fillText('HEULA PRO', cardX + cardW - 45 * s, curY + 1 * s);
+
+            curY += 75 * s;
+
+            // Hero duration
+            ctx.textAlign = 'center';
+            ctx.font = '900 ' + Math.round(155 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(hours + 'j ' + durMinsStr + 'm', centerX, curY);
+
+            curY += 70 * s;
+            // Green Status Pill
+            var statusW = 340 * s;
+            var statusH = 40 * s;
+            var statusX = centerX - statusW / 2;
+            var statusY = curY - statusH / 2;
+            ctx.fillStyle = 'rgba(52, 199, 89, 0.16)';
+            roundRect(statusX, statusY, statusW, statusH, 20 * s);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(52, 199, 89, 0.38)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.font = '800 ' + Math.round(18 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#34C759';
+            ctx.fillText('● 100% TARGET PUASA TUNTAS', centerX, curY + 1 * s);
+
+            curY += 55 * s;
+            // Divider
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cardX + 45 * s, curY);
+            ctx.lineTo(cardX + cardW - 45 * s, curY);
+            ctx.stroke();
+
+            curY += 45 * s;
+            // 3 Boxed Mini Pills
+            var colW = (cardW - 120 * s) / 3;
+            var labels = ['POLA', 'MULAI', 'SELESAI'];
+            var vals = [planLabel, startStr, endStr];
+            for (var i = 0; i < 3; i++) {
+              var bx = cardX + 45 * s + i * (colW + 15 * s);
+              var by = curY - 10 * s;
+              var bh = 76 * s;
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+              roundRect(bx, by, colW, bh, 18 * s);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+              ctx.textAlign = 'center';
+              ctx.font = '700 ' + Math.round(16 * s) + 'px ' + sansFont;
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.50)';
+              ctx.fillText(labels[i], bx + colW / 2, by + 22 * s);
+              ctx.font = '800 ' + Math.round(28 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText(vals[i], bx + colW / 2, by + 52 * s);
             }
 
           } else if (template === 'GLASS_STYLE') {
-            var items = [];
-            if (config.showBranding) items.push({ text: 'H E U L A   F A S T I N G', font: '700 ' + Math.round(26 * s) + 'px ' + sansFont, gap: 75 * s, color: 'rgba(255,255,255,0.9)' });
-            items.push({ text: hours + 'j ' + durMinsStr + 'm', font: '900 ' + Math.round(130 * s) + 'px ' + sansFont, gap: 100 * s, color: '#FFFFFF' });
-            if (config.showTarget) items.push({ text: 'Target ' + planLabel + ' Tuntas', font: '600 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 50 * s, color: 'rgba(255,255,255,0.9)' });
-            if (config.showTimes) items.push({ text: startStr + ' — ' + endStr, font: '400 ' + Math.round(25 * s) + 'px ' + sansFont, gap: 42 * s, color: 'rgba(255,255,255,0.75)' });
-            if (config.showDate) items.push({ text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.6)' });
-
-            var totalInnerH = 0;
-            for (var i = 0; i < items.length - 1; i++) totalInnerH += items[i].gap;
-            var padY = 60 * s;
-            var cardH = totalInnerH + padY * 2;
-            var cardW = 720 * s;
+            // 4. GLASS_STYLE — Apple Fitness / Strava Frosted Liquid Glass
+            var cardW = 860 * s;
+            var cardH = 500 * s;
             var cardX = centerX - cardW / 2;
             var cardY = centerY - cardH / 2;
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
             roundRect(cardX, cardY, cardW, cardH, 40 * s);
             ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-            ctx.lineWidth = 2.5;
-            ctx.stroke();
-
-            var curY = cardY + padY;
-            for (var i = 0; i < items.length; i++) {
-              ctx.font = items[i].font;
-              ctx.fillStyle = items[i].color;
-              ctx.fillText(items[i].text, centerX, curY);
-              curY += items[i].gap;
-            }
-
-          } else if (template === 'TYPOGRAPHY') {
-            var numText = String(hours);
-            ctx.font = '900 ' + Math.round(200 * s) + 'px ' + sansFont;
-            var numW = ctx.measureText(numText).width;
-            var totalBlockW = numW + (20 * s) + (160 * s);
-            var startX = centerX - totalBlockW / 2;
-
-            var items = [];
-            if (config.showBranding) items.push({ type: 'brand', text: 'FASTING RECORD', font: '900 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 70 * s, color: mainColor });
-            items.push({ type: 'num', gap: 175 * s });
-            if (config.showTarget || config.showTimes) items.push({ type: 'sub', text: planLabel + ' • ' + startStr + ' — ' + endStr, font: '700 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 48 * s, color: mainColor });
-            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '500 ' + Math.round(24 * s) + 'px ' + sansFont, gap: 35 * s, color: mainColor, alpha: 0.75 });
-
-            var totalH = 0;
-            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
-            var startY = centerY - totalH / 2;
-            var curY = startY;
-
-            ctx.textAlign = 'left';
-            for (var i = 0; i < items.length; i++) {
-              var it = items[i];
-              if (it.type === 'num') {
-                ctx.font = '900 ' + Math.round(200 * s) + 'px ' + sansFont;
-                ctx.fillStyle = mainColor;
-                ctx.fillText(numText, startX, curY + 65 * s);
-
-                var labelX = startX + numW + (22 * s);
-                ctx.font = '800 ' + Math.round(44 * s) + 'px ' + sansFont;
-                ctx.fillText('JAM', labelX, curY + 30 * s);
-                ctx.fillText(durMinsStr + ' MNT', labelX, curY + 95 * s);
-              } else {
-                ctx.font = it.font;
-                ctx.fillStyle = it.color;
-                ctx.globalAlpha = it.alpha || 1.0;
-                ctx.fillText(it.text, startX, curY);
-                ctx.globalAlpha = 1.0;
-              }
-              curY += it.gap;
-            }
-            ctx.textAlign = 'center';
-
-          } else if (template === 'EDITORIAL') {
-            var items = [];
-            if (config.showBranding) items.push({ type: 'brand', text: '— HEULA JOURNAL —', font: '400 ' + Math.round(28 * s) + 'px ' + serifFont, gap: 75 * s, color: mainColor });
-            items.push({ type: 'num', text: hours + 'h ' + durMinsStr + 'm', font: '300 ' + Math.round(145 * s) + 'px ' + serifFont, gap: 115 * s, color: mainColor });
-            items.push({ type: 'sub', text: 'Intermittent Fasting Completed', font: 'italic ' + Math.round(30 * s) + 'px ' + serifFont, gap: 42 * s, color: mainColor });
-            items.push({ type: 'line', gap: 40 * s, color: mainColor });
-            if (config.showTarget) items.push({ type: 'target', text: 'Target: ' + planLabel, font: '400 ' + Math.round(26 * s) + 'px ' + sansFont, gap: 42 * s, color: mainColor });
-            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: mainColor, alpha: 0.7 });
-
-            var totalH = 0;
-            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
-            var startY = centerY - totalH / 2;
-            var curY = startY;
-
-            for (var i = 0; i < items.length; i++) {
-              var it = items[i];
-              if (it.type === 'line') {
-                ctx.fillStyle = it.color;
-                ctx.fillRect(centerX - (60 * s), curY, 120 * s, 2 * s);
-              } else {
-                ctx.font = it.font;
-                ctx.fillStyle = it.color;
-                ctx.globalAlpha = it.alpha || 1.0;
-                ctx.fillText(it.text, centerX, curY);
-                ctx.globalAlpha = 1.0;
-              }
-              curY += it.gap;
-            }
-
-          } else if (template === 'NEON') {
-            var items = [];
-            if (config.showBranding) items.push({ type: 'brand', text: '// HEULA.PRO', font: '900 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 70 * s, color: '#CCFF00' });
-            items.push({ type: 'num', text: durFormatted, font: '900 ' + Math.round(175 * s) + 'px ' + sansFont, gap: 135 * s, color: '#FFFFFF', glow: true });
-            items.push({ type: 'sub', text: 'FASTING GOAL UNLOCKED', font: '800 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 50 * s, color: '#CCFF00' });
-            if (config.showTarget) items.push({ type: 'target', text: 'TARGET ' + planLabel, font: '800 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 45 * s, color: '#00F0FF' });
-            if (config.showTimes) items.push({ type: 'times', text: startStr + ' — ' + endStr, font: '500 ' + Math.round(25 * s) + 'px ' + sansFont, gap: 40 * s, color: '#FFFFFF' });
-            if (config.showDate) items.push({ type: 'date', text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.7)' });
-
-            var totalH = 0;
-            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
-            var startY = centerY - totalH / 2;
-            var curY = startY;
-
-            for (var i = 0; i < items.length; i++) {
-              var it = items[i];
-              ctx.font = it.font;
-              ctx.fillStyle = it.color;
-              if (it.glow) {
-                ctx.shadowColor = '#CCFF00';
-                ctx.shadowBlur = 18;
-              } else {
-                ctx.shadowBlur = 0;
-              }
-              ctx.fillText(it.text, centerX, curY);
-              curY += it.gap;
-            }
-            ctx.shadowBlur = 0;
-
-          } else if (template === 'DARK_MODE') {
-            var items = [];
-            if (config.showBranding) items.push({ text: 'HEULA ACTIVITY', font: '800 ' + Math.round(24 * s) + 'px ' + sansFont, gap: 70 * s, color: '#FC5200' });
-            items.push({ text: hours + 'j ' + durMinsStr + 'm', font: '900 ' + Math.round(130 * s) + 'px ' + sansFont, gap: 95 * s, color: '#FFFFFF' });
-            items.push({ text: 'Target ' + planLabel + ' Selesai', font: '700 ' + Math.round(30 * s) + 'px ' + sansFont, gap: 55 * s, color: '#34C759' });
-            if (config.showTimes) items.push({ text: startStr + ' — ' + endStr, font: '400 ' + Math.round(26 * s) + 'px ' + sansFont, gap: 42 * s, color: 'rgba(255,255,255,0.7)' });
-            if (config.showDate) items.push({ text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.5)' });
-
-            var totalInnerH = 0;
-            for (var i = 0; i < items.length - 1; i++) totalInnerH += items[i].gap;
-            var padY = 60 * s;
-            var cardH = totalInnerH + padY * 2;
-            var cardW = 720 * s;
-            var cardX = centerX - cardW / 2;
-            var cardY = centerY - cardH / 2;
-
-            ctx.fillStyle = 'rgba(18, 18, 20, 0.90)';
-            roundRect(cardX, cardY, cardW, cardH, 40 * s);
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.38)';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            var curY = cardY + padY;
-            for (var i = 0; i < items.length; i++) {
-              ctx.font = items[i].font;
-              ctx.fillStyle = items[i].color;
-              ctx.fillText(items[i].text, centerX, curY);
-              curY += items[i].gap;
+            var curY = cardY + 52 * s;
+
+            // Frosted Pill Header
+            var pillW = 280 * s;
+            var pillH = 42 * s;
+            var pillX = cardX + 45 * s;
+            var pillY = curY - pillH / 2;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+            roundRect(pillX, pillY, pillW, pillH, 21 * s);
+            ctx.fill();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '800 ' + Math.round(18 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('⚡ HEULA ATHLETICS', pillX + pillW / 2, curY + 1 * s);
+
+            if (config.showDate) {
+              ctx.textAlign = 'right';
+              ctx.font = '700 ' + Math.round(19 * s) + 'px ' + sansFont;
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+              ctx.fillText(dateStr, cardX + cardW - 45 * s, curY + 1 * s);
             }
+
+            curY += 75 * s;
+
+            // Giant duration
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(0,0,0,0.35)';
+            ctx.shadowBlur = 12;
+            ctx.font = '900 ' + Math.round(155 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, curY);
+            ctx.shadowBlur = 0;
+
+            curY += 68 * s;
+            ctx.font = '700 ' + Math.round(22 * s) + 'px ' + sansFont;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.90)';
+            ctx.fillText('Target ' + planLabel + ' Selesai Sempurna', centerX, curY);
+
+            curY += 45 * s;
+            // Glass Pill stats container
+            var statBoxW = cardW - 80 * s;
+            var statBoxH = 88 * s;
+            var statBoxX = centerX - statBoxW / 2;
+            var statBoxY = curY;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+            roundRect(statBoxX, statBoxY, statBoxW, statBoxH, 24 * s);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            drawStatsRow(
+              statBoxX, statBoxY + 28 * s, statBoxW,
+              'POLA', planLabel,
+              'MULAI', startStr,
+              'SELESAI', endStr,
+              '#FFFFFF', 'rgba(255, 255, 255, 0.70)', 'rgba(255, 255, 255, 0.18)', s
+            );
+
+          } else if (template === 'TYPOGRAPHY') {
+            // 5. TYPOGRAPHY — Nike / Strava Big Athletic Poster
+            var blockW = 840 * s;
+            var startX = centerX - blockW / 2;
+            var curY = centerY - 175 * s;
+
+            // Accent line + Title
+            ctx.fillStyle = '#FC5200';
+            roundRect(startX, curY - 14 * s, 6 * s, 32 * s, 3 * s);
+            ctx.fill();
+
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 ' + Math.round(24 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FC5200';
+            ctx.fillText('HEULA // FASTING MILESTONE', startX + 18 * s, curY + 2 * s);
+
+            curY += 75 * s;
+
+            // Giant number 16 + stacked texts
+            var numStr = String(hours);
+            ctx.font = '900 ' + Math.round(220 * s) + 'px ' + sansFont;
+            var numW = ctx.measureText(numStr).width;
+
+            ctx.fillStyle = mainColor;
+            ctx.shadowColor = 'rgba(0,0,0,0.55)';
+            ctx.shadowBlur = 15;
+            ctx.fillText(numStr, startX, curY + 50 * s);
+            ctx.shadowBlur = 0;
+
+            var stackX = startX + numW + 28 * s;
+            ctx.font = '900 ' + Math.round(52 * s) + 'px ' + sansFont;
+            ctx.fillStyle = mainColor;
+            ctx.fillText('JAM BERPUASA', stackX, curY + 20 * s);
+
+            ctx.font = '800 ' + Math.round(44 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FC5200';
+            ctx.fillText('+ ' + durMinsStr + ' MENIT', stackX, curY + 80 * s);
+
+            curY += 190 * s;
+
+            // Thick accent divider
+            ctx.fillStyle = '#FC5200';
+            ctx.fillRect(startX, curY, blockW, 4 * s);
+
+            curY += 40 * s;
+
+            // Tabular stats
+            drawStatsRow(
+              startX, curY, blockW,
+              'TARGET', planLabel,
+              'WAKTU', startStr + ' → ' + endStr,
+              'TANGGAL', dateStr,
+              mainColor, 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.22)', s
+            );
+
+          } else if (template === 'EDITORIAL') {
+            // 6. EDITORIAL — Strava Summit & Tracksmith Editorial Journal
+            var cardW = 860 * s;
+            var cardH = 500 * s;
+            var cardX = centerX - cardW / 2;
+            var cardY = centerY - cardH / 2;
+
+            ctx.fillStyle = 'rgba(14, 15, 18, 0.92)';
+            roundRect(cardX, cardY, cardW, cardH, 32 * s);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            var curY = cardY + 50 * s;
+
+            // Header
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '400 ' + Math.round(22 * s) + 'px ' + serifFont;
+            ctx.fillStyle = 'rgba(255,255,255,0.75)';
+            ctx.fillText('—  HEULA ATHLETIC JOURNAL  —', centerX, curY);
+
+            curY += 38 * s;
+            ctx.font = '600 ' + Math.round(16 * s) + 'px ' + sansFont;
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.fillText('VOLUME 24  •  ' + dateStr, centerX, curY);
+
+            curY += 80 * s;
+            ctx.font = '300 ' + Math.round(150 * s) + 'px ' + serifFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, curY);
+
+            curY += 75 * s;
+            ctx.font = 'italic 400 ' + Math.round(24 * s) + 'px ' + serifFont;
+            ctx.fillStyle = 'rgba(255,255,255,0.80)';
+            ctx.fillText('Aktivitas Berpuasa Terverifikasi', centerX, curY);
+
+            curY += 45 * s;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.beginPath();
+            ctx.moveTo(cardX + 60 * s, curY);
+            ctx.lineTo(cardX + cardW - 60 * s, curY);
+            ctx.stroke();
+
+            curY += 42 * s;
+            drawStatsRow(
+              cardX + 60 * s, curY, cardW - 120 * s,
+              'POLA', planLabel,
+              'MULAI', startStr,
+              'SELESAI', endStr,
+              '#FFFFFF', 'rgba(255,255,255,0.50)', 'rgba(255,255,255,0.15)', s
+            );
+
+          } else if (template === 'NEON') {
+            // 7. NEON — Strava Night Run / Cyber Volt
+            var cardW = 860 * s;
+            var cardH = 500 * s;
+            var cardX = centerX - cardW / 2;
+            var cardY = centerY - cardH / 2;
+
+            ctx.fillStyle = 'rgba(10, 12, 16, 0.94)';
+            roundRect(cardX, cardY, cardW, cardH, 36 * s);
+            ctx.fill();
+            ctx.strokeStyle = '#CCFF00';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            var curY = cardY + 50 * s;
+
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 ' + Math.round(24 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#CCFF00';
+            ctx.fillText('⚡ HEULA NIGHT FAST', cardX + 45 * s, curY);
+
+            ctx.textAlign = 'right';
+            ctx.font = '800 ' + Math.round(20 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#00F0FF';
+            ctx.fillText('RECORD: UNLOCKED', cardX + cardW - 45 * s, curY);
+
+            curY += 80 * s;
+
+            // Glowing main duration
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#CCFF00';
+            ctx.shadowBlur = 22;
+            ctx.font = '900 ' + Math.round(160 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(durFormatted, centerX, curY);
+            ctx.shadowBlur = 0;
+
+            curY += 70 * s;
+            ctx.font = '800 ' + Math.round(22 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#CCFF00';
+            ctx.fillText('TARGET ' + planLabel + ' COMPLETED', centerX, curY);
+
+            curY += 50 * s;
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cardX + 45 * s, curY);
+            ctx.lineTo(cardX + cardW - 45 * s, curY);
+            ctx.stroke();
+
+            curY += 45 * s;
+            drawStatsRow(
+              cardX + 45 * s, curY, cardW - 90 * s,
+              'POLA', planLabel,
+              'MULAI', startStr,
+              'SELESAI', endStr,
+              '#FFFFFF', '#CCFF00', 'rgba(0, 240, 255, 0.30)', s
+            );
 
           } else {
-            // CLEAN_WHITE: Pure white text with soft shadow for universal readability
-            var items = [];
-            if (config.showBranding) items.push({ text: 'H  E  U  L  A', font: '700 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 65 * s, color: '#FFFFFF' });
-            items.push({ text: durFormatted, font: '900 ' + Math.round(180 * s) + 'px ' + sansFont, gap: 140 * s, color: '#FFFFFF' });
-            items.push({ text: 'TARGET ' + planLabel + ' COMPLETED', font: '700 ' + Math.round(28 * s) + 'px ' + sansFont, gap: 50 * s, color: '#FFFFFF' });
-            if (config.showTimes) items.push({ text: startStr + ' — ' + endStr, font: '400 ' + Math.round(26 * s) + 'px ' + sansFont, gap: 42 * s, color: '#FFFFFF' });
-            if (config.showDate) items.push({ text: dateStr, font: '400 ' + Math.round(23 * s) + 'px ' + sansFont, gap: 35 * s, color: 'rgba(255,255,255,0.85)' });
+            // 8. CLEAN_WHITE — Pure White Floating Athletic Overlay
+            var blockW = 840 * s;
+            var startX = centerX - blockW / 2;
+            var curY = centerY - 190 * s;
 
-            var totalH = 0;
-            for (var i = 0; i < items.length - 1; i++) totalH += items[i].gap;
-            var startY = centerY - totalH / 2;
-            var curY = startY;
+            if (config.showBranding) {
+              drawStravaMark(startX, curY - 14 * s, 32 * s, '#FFFFFF');
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.font = '900 ' + Math.round(30 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#FFFFFF';
+              ctx.shadowColor = 'rgba(0,0,0,0.6)';
+              ctx.shadowBlur = 10;
+              ctx.fillText('HEULA', startX + 34 * s, curY + 2 * s);
 
-            ctx.shadowColor = 'rgba(0,0,0,0.45)';
-            ctx.shadowBlur = 10;
-            for (var i = 0; i < items.length; i++) {
-              ctx.font = items[i].font;
-              ctx.fillStyle = items[i].color;
-              ctx.fillText(items[i].text, centerX, curY);
-              curY += items[i].gap;
+              ctx.textAlign = 'right';
+              ctx.font = '700 ' + Math.round(18 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText('FASTING ACTIVITY', startX + blockW, curY + 2 * s);
+              curY += 38 * s;
             }
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.40)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(startX, curY);
+            ctx.lineTo(startX + blockW, curY);
+            ctx.stroke();
+            curY += 50 * s;
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '800 ' + Math.round(20 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 8;
+            ctx.fillText('DURASI BERPUASA', centerX, curY);
+            curY += 100 * s;
+
+            ctx.shadowBlur = 16;
+            ctx.font = '900 ' + Math.round(185 * s) + 'px ' + sansFont;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, curY);
+            curY += 105 * s;
+
             ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(255,255,255,0.40)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(startX, curY);
+            ctx.lineTo(startX + blockW, curY);
+            ctx.stroke();
+            curY += 45 * s;
+
+            ctx.shadowBlur = 8;
+            drawStatsRow(
+              startX, curY, blockW,
+              'POLA', planLabel,
+              'MULAI', startStr,
+              'SELESAI', endStr,
+              '#FFFFFF', 'rgba(255,255,255,0.80)', 'rgba(255,255,255,0.35)', s
+            );
+            curY += 80 * s;
+
+            if (config.showDate) {
+              ctx.textAlign = 'center';
+              ctx.font = '700 ' + Math.round(20 * s) + 'px ' + sansFont;
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText(dateStr + '  •  TARGET TUNTAS ✓', centerX, curY + 15 * s);
+            }
           }
 
           ctx.restore();
