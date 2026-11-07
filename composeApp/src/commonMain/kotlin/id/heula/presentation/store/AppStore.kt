@@ -25,6 +25,7 @@ class AppStore(
 
     val currentUser: StateFlow<UserAccount?> = authRepository.currentUser
     val syncState: StateFlow<SyncState> = authRepository.syncState
+    val lastSyncedAt: StateFlow<Long?> = authRepository.lastSyncedAt
 
     val activeFast: StateFlow<ActiveFast?> = settings
         .map { it.activeFast?.toActiveFast() }

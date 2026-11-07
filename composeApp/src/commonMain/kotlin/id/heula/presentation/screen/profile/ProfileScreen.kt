@@ -48,6 +48,7 @@ fun ProfileScreen(
     val settings by store.settings.collectAsState()
     val currentUser by store.currentUser.collectAsState()
     val syncState by store.syncState.collectAsState()
+    val lastSyncedAt by store.lastSyncedAt.collectAsState()
     val s = getStrings(settings.language)
 
     var showResetDialog by remember { mutableStateOf(false) }
@@ -220,6 +221,15 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    val nowMs = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                    Text(
+                        text = formatLastSynced(lastSyncedAt, nowMs, settings.language),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -228,14 +238,30 @@ fun ProfileScreen(
                             onClick = { store.syncAllData() },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),
+                            enabled = syncState != SyncState.SYNCING,
                             contentPadding = PaddingValues(vertical = 10.dp),
                         ) {
-                            Text(
-                                text = s.syncNowButton,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = BrandPrimary,
-                            )
+                            if (syncState == SyncState.SYNCING) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = BrandPrimary,
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (settings.language == AppLanguage.ENGLISH) "Syncing..." else "Sinkron...",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = BrandPrimary,
+                                )
+                            } else {
+                                Text(
+                                    text = s.syncNowButton,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = BrandPrimary,
+                                )
+                            }
                         }
 
                         OutlinedButton(
@@ -621,4 +647,26 @@ fun ProfileScreen(
         },
         onDismiss = { showResetDialog = false },
     )
+}
+
+fun formatLastSynced(timestamp: Long?, now: Long, language: AppLanguage): String {
+    if (timestamp == null || timestamp <= 0L) {
+        return if (language == AppLanguage.ENGLISH) "Never synced to cloud" else "Belum pernah disinkronkan ke cloud"
+    }
+    val diffSeconds = (now - timestamp) / 1000L
+    return when {
+        diffSeconds < 60 -> if (language == AppLanguage.ENGLISH) "Last synced: Just now" else "Terakhir sinkron: Baru saja"
+        diffSeconds < 3600 -> {
+            val mins = diffSeconds / 60
+            if (language == AppLanguage.ENGLISH) "Last synced: $mins min ago" else "Terakhir sinkron: $mins mnt lalu"
+        }
+        diffSeconds < 86400 -> {
+            val hours = diffSeconds / 3600
+            if (language == AppLanguage.ENGLISH) "Last synced: $hours hrs ago" else "Terakhir sinkron: $hours jam lalu"
+        }
+        else -> {
+            val days = diffSeconds / 86400
+            if (language == AppLanguage.ENGLISH) "Last synced: $days days ago" else "Terakhir sinkron: $days hari lalu"
+        }
+    }
 }

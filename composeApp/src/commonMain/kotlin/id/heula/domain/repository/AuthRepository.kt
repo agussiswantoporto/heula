@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 interface AuthRepository {
     val currentUser: StateFlow<UserAccount?>
     val syncState: StateFlow<SyncState>
+    val lastSyncedAt: StateFlow<Long?>
 
     suspend fun signInWithGoogle(): Result<UserAccount>
     suspend fun signOut(): Result<Unit>

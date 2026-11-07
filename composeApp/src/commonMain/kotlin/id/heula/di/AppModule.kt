@@ -9,6 +9,7 @@ import id.heula.data.repository.SettingsRepositoryImpl
 import id.heula.data.repository.WeightRepository
 import id.heula.data.repository.WeightRepositoryImpl
 import id.heula.domain.repository.AuthRepository
+import id.heula.domain.usecase.SyncManager
 import id.heula.presentation.store.AppStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +25,21 @@ val appModule = module {
     single<SettingsRepository> { SettingsRepositoryImpl() }
     single<SessionRepository> { SessionRepositoryImpl() }
     single<WeightRepository> { WeightRepositoryImpl() }
-    single<AuthRepository> { AuthRepositoryImpl(googleAuthProvider = get(), settings = Settings()) }
+    single {
+        SyncManager(
+            sessionRepository = get(),
+            weightRepository = get(),
+            settingsRepository = get(),
+            cloudSyncService = get(),
+        )
+    }
+    single<AuthRepository> {
+        AuthRepositoryImpl(
+            googleAuthProvider = get(),
+            syncManager = get(),
+            settings = Settings(),
+        )
+    }
     single {
         AppStore(
             settingsRepository = get(),

@@ -79,6 +79,53 @@
           } catch (e) {}
         }
       };
+
+      window.heulaFirestore = {
+        projectId: 'heula-c9a5f',
+        upload: function(uid, jsonStr) {
+          var url = 'https://firestore.googleapis.com/v1/projects/' + this.projectId + '/databases/(default)/documents/users/' + uid + '?updateMask.fieldPaths=payload&updateMask.fieldPaths=updatedAt';
+          fetch(url, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                payload: { stringValue: jsonStr },
+                updatedAt: { integerValue: String(Date.now()) }
+              }
+            })
+          })
+          .then(function(res) {
+            if (!res.ok) throw new Error('Firestore error ' + res.status);
+            window.localStorage.setItem('heula_sync_upload_status', 'OK');
+          })
+          .catch(function(err) {
+            window.localStorage.setItem('heula_sync_upload_status', 'ERR:' + err.message);
+          });
+        },
+        download: function(uid) {
+          var url = 'https://firestore.googleapis.com/v1/projects/' + this.projectId + '/databases/(default)/documents/users/' + uid;
+          fetch(url)
+          .then(function(res) {
+            if (res.status === 404) {
+              window.localStorage.setItem('heula_sync_download_result', '__EMPTY__');
+              return null;
+            }
+            if (!res.ok) throw new Error('Firestore read error ' + res.status);
+            return res.json();
+          })
+          .then(function(doc) {
+            if (!doc) return;
+            if (!doc.fields || !doc.fields.payload) {
+              window.localStorage.setItem('heula_sync_download_result', '__EMPTY__');
+            } else {
+              window.localStorage.setItem('heula_sync_download_result', doc.fields.payload.stringValue);
+            }
+          })
+          .catch(function(err) {
+            window.localStorage.setItem('heula_sync_download_result', '__ERR__:' + err.message);
+          });
+        }
+      };
     </script>
 </head>
 <body>
