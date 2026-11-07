@@ -1,13 +1,8 @@
 package id.heula.presentation.screen.home
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.layout.ContentScale
-import heula.composeapp.generated.resources.Res
-import heula.composeapp.generated.resources.ic_logo
-import org.jetbrains.compose.resources.painterResource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -313,14 +308,16 @@ private fun TimerHeroSection(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
-            Image(
-                painter = painterResource(Res.drawable.ic_logo),
-                contentDescription = "Heula",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .height(120.dp)
-                    .padding(bottom = 2.dp)
+            Text(
+                text = "Heula",
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-1.0).sp,
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = when {
                     activeFast != null -> s.currentlyFasting

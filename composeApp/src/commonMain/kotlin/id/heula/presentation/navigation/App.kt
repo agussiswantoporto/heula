@@ -27,14 +27,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import heula.composeapp.generated.resources.Res
-import heula.composeapp.generated.resources.ic_logo
-import org.jetbrains.compose.resources.painterResource
 import id.heula.presentation.screen.history.HistoryScreen
 import id.heula.presentation.screen.home.HomeScreen
 import id.heula.presentation.screen.onboarding.OnboardingScreen
@@ -96,15 +91,16 @@ fun App(
                                 header = {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.padding(vertical = 20.dp),
+                                        modifier = Modifier.padding(vertical = 20.dp, horizontal = 12.dp),
                                     ) {
-                                        Image(
-                                            painter = painterResource(Res.drawable.ic_logo),
-                                            contentDescription = "Heula",
-                                            contentScale = ContentScale.Fit,
-                                            modifier = Modifier
-                                                .height(80.dp)
-                                                .padding(horizontal = 8.dp)
+                                        Text(
+                                            text = "Heula",
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = (-0.6).sp,
+                                            ),
+                                            color = BrandPrimary,
                                         )
                                     }
                                 }

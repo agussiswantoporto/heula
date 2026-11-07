@@ -167,9 +167,15 @@ fun HeulaBadge(
     }
 }
 
+data class SegmentItem<T>(
+    val key: T,
+    val label: String,
+    val leadingIcon: (@Composable () -> Unit)? = null,
+)
+
 @Composable
 fun <T> HeulaSegmentedControl(
-    items: List<Pair<T, String>>,
+    items: List<SegmentItem<T>>,
     selectedItem: T,
     onItemSelected: (T) -> Unit,
     modifier: Modifier = Modifier,
@@ -188,10 +194,10 @@ fun <T> HeulaSegmentedControl(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            items.forEach { (key, label) ->
-                val isSelected = key == selectedItem
+            items.forEach { item ->
+                val isSelected = item.key == selectedItem
                 Surface(
-                    onClick = { onItemSelected(key) },
+                    onClick = { onItemSelected(item.key) },
                     shape = RoundedCornerShape(8.dp),
                     color = if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent,
                     shadowElevation = if (isSelected) 2.dp else 0.dp,
@@ -199,12 +205,19 @@ fun <T> HeulaSegmentedControl(
                         .weight(1f)
                         .fillMaxHeight(),
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize(),
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 4.dp),
                     ) {
+                        if (item.leadingIcon != null) {
+                            item.leadingIcon.invoke()
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
                         Text(
-                            text = label,
+                            text = item.label,
                             fontSize = 13.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                             color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -214,6 +227,22 @@ fun <T> HeulaSegmentedControl(
             }
         }
     }
+}
+
+@kotlin.jvm.JvmName("HeulaSegmentedControlPairs")
+@Composable
+fun <T> HeulaSegmentedControl(
+    items: List<Pair<T, String>>,
+    selectedItem: T,
+    onItemSelected: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    HeulaSegmentedControl(
+        items = items.map { SegmentItem(it.first, it.second) },
+        selectedItem = selectedItem,
+        onItemSelected = onItemSelected,
+        modifier = modifier,
+    )
 }
 
 @Composable

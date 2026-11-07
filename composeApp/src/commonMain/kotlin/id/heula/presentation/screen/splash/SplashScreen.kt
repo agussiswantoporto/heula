@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,16 +40,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import heula.composeapp.generated.resources.Res
-import heula.composeapp.generated.resources.ic_logo
-import heula.composeapp.generated.resources.ic_splash_logo
 import id.heula.presentation.theme.BrandPrimary
 import kotlinx.coroutines.delay
-import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun SplashScreen(
@@ -115,12 +111,12 @@ fun SplashScreen(
             // Branded Icon with Pulse Glow Ring
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(130.dp)
+                modifier = Modifier.size(120.dp)
             ) {
                 // Subtle glowing pulse aura
                 Box(
                     modifier = Modifier
-                        .size(120.dp)
+                        .size(110.dp)
                         .scale(pulseScale)
                         .alpha(pulseAlpha)
                         .clip(CircleShape)
@@ -134,23 +130,49 @@ fun SplashScreen(
                         )
                 )
 
-                // Main Splash Logo Image (ic_splash_logo.png)
-                Image(
-                    painter = painterResource(Res.drawable.ic_splash_logo),
-                    contentDescription = "Heula Splash Logo",
-                    contentScale = ContentScale.Crop,
+                // iOS Squircle App Icon
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(180.dp)
-                        .clip(RoundedCornerShape(26.dp))
-                        .border(
-                            width = 1.5.dp,
-                            color = Color.White.copy(alpha = 0.25f),
-                            shape = RoundedCornerShape(26.dp)
+                        .size(88.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    BrandPrimary,
+                                    Color(0xFF28A745)
+                                )
+                            )
                         )
-                )
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.25f),
+                            shape = RoundedCornerShape(22.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = "Heula",
+                        tint = Color.White,
+                        modifier = Modifier.size(46.dp)
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // iOS-style Wordmark Logo
+            Text(
+                text = "Heula",
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-1.2).sp,
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Tagline
             Text(
@@ -158,7 +180,7 @@ fun SplashScreen(
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.5.sp
+                letterSpacing = (-0.2).sp
             )
 
             Spacer(modifier = Modifier.height(18.dp))

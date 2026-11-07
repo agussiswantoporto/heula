@@ -25,11 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.heula.domain.model.*
 import id.heula.presentation.component.icon.HeulaIcons
+import id.heula.presentation.component.icon.IndonesiaFlag
+import id.heula.presentation.component.icon.UkFlag
 import id.heula.presentation.component.ui.ButtonVariant
 import id.heula.presentation.component.ui.ConfirmDialog
 import id.heula.presentation.component.ui.HeulaButton
 import id.heula.presentation.component.ui.HeulaCard
 import id.heula.presentation.component.ui.HeulaSegmentedControl
+import id.heula.presentation.component.ui.SegmentItem
 import id.heula.presentation.store.AppStore
 import id.heula.presentation.theme.BrandPrimary
 import id.heula.presentation.theme.DangerRed
@@ -166,8 +169,16 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 HeulaSegmentedControl(
                     items = listOf(
-                        AppLanguage.INDONESIAN to "🇮🇩 Indonesia",
-                        AppLanguage.ENGLISH to "🇬🇧 English",
+                        SegmentItem(
+                            key = AppLanguage.INDONESIAN,
+                            label = "Indonesia",
+                            leadingIcon = { IndonesiaFlag() },
+                        ),
+                        SegmentItem(
+                            key = AppLanguage.ENGLISH,
+                            label = "English",
+                            leadingIcon = { UkFlag() },
+                        ),
                     ),
                     selectedItem = settings.language,
                     onItemSelected = { store.setLanguage(it) },
