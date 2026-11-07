@@ -1,0 +1,35 @@
+{
+  "_comment": "Template konfigurasi API Keys & Identitas Project Heula KMP. Salin file ini dan isi dengan kredensial asli Anda. JANGAN commit kredensial asli ke repositori publik.",
+  "google_oauth": {
+    "web_client_id": "",
+    "web_client_secret": "",
+    "android_client_id": "",
+    "ios_client_id": "",
+    "authorized_javascript_origins": [
+      "http://localhost:8080",
+      "http://localhost",
+      "http://127.0.0.1:8080",
+      "https://your-production-domain.com"
+    ],
+    "authorized_redirect_uris": [
+      "http://localhost:8080"
+    ]
+  },
+  "android": {
+    "package_name": "id.heula",
+    "debug_keystore_sha1": "",
+    "release_keystore_sha1": ""
+  },
+  "firebase": {
+    "project_id": "",
+    "project_number": "",
+    "database_id": "(default)",
+    "api_key": "",
+    "auth_domain": "",
+    "storage_bucket": ""
+  },
+  "firestore_rest_endpoints": {
+    "base_url": "https://firestore.googleapis.com/v1",
+    "document_users_path": "projects/{PROJECT_ID}/databases/(default)/documents/users/{USER_ID}"
+  }
+}
