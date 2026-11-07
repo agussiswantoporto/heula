@@ -14,19 +14,23 @@ class WasmGoogleAuthProvider : GoogleAuthProvider {
         clearWebGoogleAuthResult()
         triggerWebGoogleSignIn()
 
-        val result = withTimeoutOrNull(60_000L) {
+        val result = withTimeoutOrNull(25_000L) {
             while (true) {
                 val raw = getWebGoogleAuthResult()
                 if (raw.isNotEmpty()) {
                     return@withTimeoutOrNull raw
                 }
-                delay(300)
+                delay(200)
             }
             null
         }
 
-        if (result == null) {
-            return Result.failure(Exception("Waktu login Google habis atau pop-up ditutup."))
+        if (result == null || result.startsWith("__CANCELLED__")) {
+            return Result.failure(Exception("Login Google dibatalkan."))
+        }
+
+        if (result.startsWith("__ERR__:")) {
+            return Result.failure(Exception(result.removePrefix("__ERR__:")))
         }
 
         return try {

@@ -5,6 +5,8 @@ import id.heula.data.repository.SettingsRepository
 import id.heula.data.repository.WeightRepository
 import id.heula.domain.model.*
 import id.heula.domain.repository.AuthRepository
+import id.heula.domain.repository.HealthSyncService
+import id.heula.domain.repository.ShareExporter
 import id.heula.domain.usecase.AppSettings
 import id.heula.domain.usecase.toActiveFast
 import id.heula.domain.usecase.toSerializable
@@ -18,6 +20,8 @@ class AppStore(
     private val sessionRepository: SessionRepository,
     private val weightRepository: WeightRepository,
     private val authRepository: AuthRepository,
+    private val healthSyncService: HealthSyncService,
+    private val shareExporter: ShareExporter,
     private val scope: CoroutineScope,
 ) {
     private val _settings = MutableStateFlow(AppSettings())
@@ -26,6 +30,7 @@ class AppStore(
     val currentUser: StateFlow<UserAccount?> = authRepository.currentUser
     val syncState: StateFlow<SyncState> = authRepository.syncState
     val lastSyncedAt: StateFlow<Long?> = authRepository.lastSyncedAt
+    val healthStatus: StateFlow<HealthSyncStatus> = healthSyncService.status
 
     val activeFast: StateFlow<ActiveFast?> = settings
         .map { it.activeFast?.toActiveFast() }
@@ -58,9 +63,39 @@ class AppStore(
         }
     }
 
+    fun requestHealthAuthorization(onResult: (Result<Boolean>) -> Unit = {}) {
+        scope.launch {
+            val res = healthSyncService.requestAuthorization()
+            onResult(res)
+        }
+    }
+
+    fun syncHealthData(onResult: (Result<Unit>) -> Unit = {}) {
+        scope.launch {
+            val currentWeights = weights.value
+            val currentWater = settings.value.waterIntakeMl
+            val res = healthSyncService.syncAll(currentWeights, currentWater)
+            onResult(res)
+        }
+    }
+
+    fun exportShareImage(
+        session: FastingSession,
+        config: ShareCustomization,
+        onResult: (Result<Unit>) -> Unit = {}
+    ) {
+        scope.launch {
+            val res = shareExporter.exportFastingShare(session, config)
+            onResult(res)
+        }
+    }
+
     init {
         scope.launch {
             settingsRepository.observe().collect { _settings.value = it }
+        }
+        scope.launch {
+            healthSyncService.checkStatus()
         }
     }
 
@@ -70,6 +105,10 @@ class AppStore(
             _settings.value = updated
             settingsRepository.save(updated)
         }
+    }
+
+    fun selectTab(tab: ScreenTab) = update {
+        copy(lastTab = tab)
     }
 
     fun completeOnboarding(answers: ProfilingAnswers, method: MethodId) {
@@ -170,6 +209,13 @@ class AppStore(
         val todayEpochDay = Clock.System.now().toEpochMilliseconds() / 86_400_000L
         val currentAmount = if (waterDateEpochDay == todayEpochDay) waterIntakeMl else 0
         val newAmount = (currentAmount + ml).coerceIn(0, 10000)
+
+        if (healthStatus.value.state == HealthPermissionState.CONNECTED && ml > 0) {
+            scope.launch {
+                healthSyncService.syncHydration(ml.toDouble(), Clock.System.now().toEpochMilliseconds())
+            }
+        }
+
         copy(
             waterIntakeMl = newAmount,
             waterDateEpochDay = todayEpochDay,
@@ -185,13 +231,17 @@ class AppStore(
     }
 
     fun logWeight(weightKg: Double) {
+        val nowMs = Clock.System.now().toEpochMilliseconds()
         scope.launch {
             weightRepository.add(
                 WeightRecord(
                     weightKg = weightKg,
-                    recordedAt = Clock.System.now().toEpochMilliseconds()
+                    recordedAt = nowMs
                 )
             )
+            if (healthStatus.value.state == HealthPermissionState.CONNECTED) {
+                healthSyncService.syncWeight(weightKg, nowMs)
+            }
         }
     }
 

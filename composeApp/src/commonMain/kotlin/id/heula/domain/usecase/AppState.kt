@@ -18,6 +18,7 @@ data class AppSettings(
     val waterIntakeMl: Int = 0,
     val waterDateEpochDay: Long = 0,
     val language: AppLanguage = AppLanguage.INDONESIAN,
+    val lastTab: ScreenTab = ScreenTab.HOME,
 )
 
 @Serializable

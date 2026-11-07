@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +22,7 @@ import id.heula.presentation.component.icon.getMoodVisual
 import id.heula.presentation.component.ui.ConfirmDialog
 import id.heula.presentation.component.ui.HeulaBadge
 import id.heula.presentation.component.ui.HeulaCard
+import id.heula.presentation.screen.share.FastingShareModal
 import id.heula.presentation.store.AppStore
 import id.heula.presentation.theme.BrandPrimary
 import id.heula.presentation.theme.DangerRed
@@ -40,6 +42,7 @@ fun HistoryScreen(
 
     var sessionToDelete by remember { mutableStateOf<FastingSession?>(null) }
     var sessionToEditNote by remember { mutableStateOf<FastingSession?>(null) }
+    var sessionToShare by remember { mutableStateOf<FastingSession?>(null) }
 
     BoxWithConstraints(
         modifier = modifier
@@ -103,13 +106,25 @@ fun HistoryScreen(
                             endedEarlyText = s.endedEarly,
                             noteMoodButtonText = s.noteMoodButton,
                             deleteButtonText = s.deleteButton,
+                            isEnglish = settings.language == id.heula.domain.model.AppLanguage.ENGLISH,
                             onDelete = { sessionToDelete = session },
                             onEditNote = { sessionToEditNote = session },
+                            onShare = { sessionToShare = session },
                         )
                     }
                 }
             }
         }
+    }
+
+    if (sessionToShare != null) {
+        FastingShareModal(
+            session = sessionToShare!!,
+            onDismiss = { sessionToShare = null },
+            onExport = { config, onResult ->
+                store.exportShareImage(sessionToShare!!, config, onResult)
+            }
+        )
     }
 
     if (sessionToDelete != null) {
@@ -147,8 +162,10 @@ private fun SessionItemCard(
     endedEarlyText: String,
     noteMoodButtonText: String,
     deleteButtonText: String,
+    isEnglish: Boolean,
     onDelete: () -> Unit,
     onEditNote: () -> Unit,
+    onShare: () -> Unit,
 ) {
     val durationHours = session.durationMs / 3600000
     val durationMins = (session.durationMs % 3600000) / 60000
@@ -228,18 +245,40 @@ private fun SessionItemCard(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val hasNoteOrMood = session.mood != null || !session.note.isNullOrBlank()
-            // Button is hidden once note or mood is already filled!
-            if (!hasNoteOrMood) {
-                TextButton(onClick = onEditNote) {
-                    Text(noteMoodButtonText, fontSize = 12.sp, color = BrandPrimary)
-                }
+            OutlinedButton(
+                onClick = onShare,
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.5f)),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Bagikan",
+                    tint = BrandPrimary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (isEnglish) "Share" else "Bagikan",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = BrandPrimary,
+                )
             }
-            TextButton(onClick = onDelete) {
-                Text(deleteButtonText, fontSize = 12.sp, color = DangerRed)
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val hasNoteOrMood = session.mood != null || !session.note.isNullOrBlank()
+                if (!hasNoteOrMood) {
+                    TextButton(onClick = onEditNote) {
+                        Text(noteMoodButtonText, fontSize = 12.sp, color = BrandPrimary)
+                    }
+                }
+                TextButton(onClick = onDelete) {
+                    Text(deleteButtonText, fontSize = 12.sp, color = DangerRed)
+                }
             }
         }
     }

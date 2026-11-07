@@ -21,6 +21,9 @@ enum class Theme { SYSTEM, LIGHT, DARK }
 enum class AppLanguage { INDONESIAN, ENGLISH }
 
 @Serializable
+enum class ScreenTab { HOME, HISTORY, STATS, PROFILE }
+
+@Serializable
 data class ProfilingAnswers(
     val goal: Goal,
     val exercises: Boolean,

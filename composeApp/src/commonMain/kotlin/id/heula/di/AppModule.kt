@@ -46,6 +46,8 @@ val appModule = module {
             sessionRepository = get(),
             weightRepository = get(),
             authRepository = get(),
+            healthSyncService = get(),
+            shareExporter = get(),
             scope = get(),
         )
     }

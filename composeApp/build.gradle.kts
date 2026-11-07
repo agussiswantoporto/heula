@@ -56,6 +56,7 @@ kotlin {
             implementation(libs.android.activity.compose)
             implementation(libs.koin.android)
             implementation(libs.kotlinx.coroutines.android)
+            implementation(libs.health.connect.client)
         }
 
         iosMain.dependencies {

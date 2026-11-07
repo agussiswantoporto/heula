@@ -51,7 +51,7 @@ class AuthRepositoryImpl(
                 Result.success(user)
             },
             onFailure = { err ->
-                _syncState.value = SyncState.FAILED
+                _syncState.value = SyncState.IDLE
                 Result.failure(err)
             }
         )
@@ -81,7 +81,7 @@ class AuthRepositoryImpl(
                 Result.success(Unit)
             },
             onFailure = { err ->
-                _syncState.value = SyncState.FAILED
+                _syncState.value = SyncState.IDLE
                 Result.failure(err)
             }
         )

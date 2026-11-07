@@ -15,6 +15,7 @@ kotlinx-datetime = "0.6.1"
 lifecycle = "2.8.4"
 firebase-gitlive = "3.0.0-alpha02"
 google-services = "4.4.2"
+health-connect = "1.1.0-alpha11"
 
 [libraries]
 # Compose
@@ -56,6 +57,9 @@ android-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel
 # Firebase KMP (GitLive)
 firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "firebase-gitlive" }
 firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "firebase-gitlive" }
+
+# Health Connect (Android)
+health-connect-client = { module = "androidx.health.connect:connect-client", version.ref = "health-connect" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

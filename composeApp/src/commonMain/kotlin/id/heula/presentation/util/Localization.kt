@@ -96,6 +96,14 @@ data class Strings(
     val syncStatusFailed: String,
     val syncNowButton: String,
     val lastSyncedJustNow: String,
+    // Health Integration (Phase 3)
+    val healthConnectSectionTitle: String,
+    val healthConnectSectionDesc: String,
+    val healthConnectConnected: String,
+    val healthConnectNotConnected: String,
+    val healthConnectConnectBtn: String,
+    val healthConnectSyncBtn: String,
+    val healthConnectDesktopNote: String,
 )
 
 val IndonesianStrings = Strings(
@@ -185,6 +193,14 @@ val IndonesianStrings = Strings(
     syncStatusFailed = "Gagal sinkronisasi data",
     syncNowButton = "Sinkronkan Sekarang",
     lastSyncedJustNow = "Terakhir disinkronkan: Baru saja",
+    // Health Integration (Phase 3)
+    healthConnectSectionTitle = "Integrasi Apple Health & Health Connect",
+    healthConnectSectionDesc = "Sinkronkan timbangan berat badan dan asupan air minum otomatis ke aplikasi kesehatan bawaan ponselmu.",
+    healthConnectConnected = "Terhubung & Siap Sinkron",
+    healthConnectNotConnected = "Belum Terhubung",
+    healthConnectConnectBtn = "Hubungkan ke Health",
+    healthConnectSyncBtn = "Sinkronkan Sekarang",
+    healthConnectDesktopNote = "Fitur Apple Health & Health Connect aktif otomatis saat digunakan di aplikasi ponsel (iOS / Android).",
 )
 
 val EnglishStrings = Strings(
@@ -274,6 +290,14 @@ val EnglishStrings = Strings(
     syncStatusFailed = "Sync failed",
     syncNowButton = "Sync Now",
     lastSyncedJustNow = "Last synced: Just now",
+    // Health Integration (Phase 3)
+    healthConnectSectionTitle = "Apple Health & Health Connect",
+    healthConnectSectionDesc = "Automatically sync your weight records and daily water intake with your phone's native health app.",
+    healthConnectConnected = "Connected & Active",
+    healthConnectNotConnected = "Not Connected",
+    healthConnectConnectBtn = "Connect to Health",
+    healthConnectSyncBtn = "Sync Health Now",
+    healthConnectDesktopNote = "Apple Health & Health Connect integrations are active on mobile devices (iOS / Android).",
 )
 
 fun getStrings(language: AppLanguage): Strings = when (language) {

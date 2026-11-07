@@ -30,6 +30,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import id.heula.domain.model.ScreenTab
 import id.heula.presentation.screen.history.HistoryScreen
 import id.heula.presentation.screen.home.HomeScreen
 import id.heula.presentation.screen.onboarding.OnboardingScreen
@@ -42,10 +43,6 @@ import id.heula.presentation.theme.HeulaTheme
 import id.heula.presentation.util.Strings
 import id.heula.presentation.util.getStrings
 
-enum class ScreenTab {
-    HOME, HISTORY, STATS, PROFILE
-}
-
 @Composable
 fun App(
     store: AppStore,
@@ -53,9 +50,13 @@ fun App(
 ) {
     val settings by store.settings.collectAsState()
     val s = getStrings(settings.language)
-    var currentTab by remember { mutableStateOf(ScreenTab.HOME) }
+    var currentTab by remember { mutableStateOf(settings.lastTab) }
     var isOnboardingMode by remember(settings.onboarded) { mutableStateOf(!settings.onboarded) }
     var isSplashVisible by remember { mutableStateOf(enableSplashScreen) }
+
+    LaunchedEffect(settings.lastTab) {
+        currentTab = settings.lastTab
+    }
 
     HeulaTheme(userTheme = settings.theme) {
         Surface(
@@ -107,7 +108,10 @@ fun App(
                             ) {
                                 NavigationRailItem(
                                     selected = currentTab == ScreenTab.HOME,
-                                    onClick = { currentTab = ScreenTab.HOME },
+                                    onClick = {
+                                        currentTab = ScreenTab.HOME
+                                        store.selectTab(ScreenTab.HOME)
+                                    },
                                     icon = { Icon(Icons.Default.Timer, contentDescription = s.navTimer) },
                                     label = { Text(s.navTimer) },
                                     colors = NavigationRailItemDefaults.colors(
@@ -118,7 +122,10 @@ fun App(
                                 )
                                 NavigationRailItem(
                                     selected = currentTab == ScreenTab.HISTORY,
-                                    onClick = { currentTab = ScreenTab.HISTORY },
+                                    onClick = {
+                                        currentTab = ScreenTab.HISTORY
+                                        store.selectTab(ScreenTab.HISTORY)
+                                    },
                                     icon = { Icon(Icons.Default.History, contentDescription = s.navHistory) },
                                     label = { Text(s.navHistory) },
                                     colors = NavigationRailItemDefaults.colors(
@@ -129,7 +136,10 @@ fun App(
                                 )
                                 NavigationRailItem(
                                     selected = currentTab == ScreenTab.STATS,
-                                    onClick = { currentTab = ScreenTab.STATS },
+                                    onClick = {
+                                        currentTab = ScreenTab.STATS
+                                        store.selectTab(ScreenTab.STATS)
+                                    },
                                     icon = { Icon(Icons.Default.BarChart, contentDescription = s.navStats) },
                                     label = { Text(s.navStats) },
                                     colors = NavigationRailItemDefaults.colors(
@@ -140,7 +150,10 @@ fun App(
                                 )
                                 NavigationRailItem(
                                     selected = currentTab == ScreenTab.PROFILE,
-                                    onClick = { currentTab = ScreenTab.PROFILE },
+                                    onClick = {
+                                        currentTab = ScreenTab.PROFILE
+                                        store.selectTab(ScreenTab.PROFILE)
+                                    },
                                     icon = { Icon(Icons.Default.Person, contentDescription = s.navProfile) },
                                     label = { Text(s.navProfile) },
                                     colors = NavigationRailItemDefaults.colors(
@@ -188,7 +201,10 @@ fun App(
 
                             IosFloatingPillNavBar(
                                 currentTab = currentTab,
-                                onTabSelected = { currentTab = it },
+                                onTabSelected = {
+                                    currentTab = it
+                                    store.selectTab(it)
+                                },
                                 s = s,
                                 modifier = Modifier.align(Alignment.BottomCenter),
                             )

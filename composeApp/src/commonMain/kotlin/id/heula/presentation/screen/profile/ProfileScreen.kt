@@ -37,6 +37,7 @@ import id.heula.presentation.component.ui.SegmentItem
 import id.heula.presentation.store.AppStore
 import id.heula.presentation.theme.BrandPrimary
 import id.heula.presentation.theme.DangerRed
+import id.heula.presentation.util.Strings
 import id.heula.presentation.util.getStrings
 
 @Composable
@@ -49,8 +50,10 @@ fun ProfileScreen(
     val currentUser by store.currentUser.collectAsState()
     val syncState by store.syncState.collectAsState()
     val lastSyncedAt by store.lastSyncedAt.collectAsState()
+    val healthStatus by store.healthStatus.collectAsState()
     val s = getStrings(settings.language)
 
+    var isSyncingHealth by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showPlanSelector by remember { mutableStateOf(false) }
     var showCustomHoursDialog by remember { mutableStateOf(false) }
@@ -284,6 +287,25 @@ fun ProfileScreen(
                     }
                 }
             }
+
+            // Health Integration Card (Apple Health / Health Connect)
+            HealthSyncCard(
+                healthStatus = healthStatus,
+                isSyncingHealth = isSyncingHealth,
+                language = settings.language,
+                s = s,
+                onConnect = {
+                    store.requestHealthAuthorization {
+                        store.syncHealthData()
+                    }
+                },
+                onSync = {
+                    isSyncingHealth = true
+                    store.syncHealthData {
+                        isSyncingHealth = false
+                    }
+                },
+            )
 
             // Profile info card
             settings.profiling?.let { prof ->
@@ -667,6 +689,152 @@ fun formatLastSynced(timestamp: Long?, now: Long, language: AppLanguage): String
         else -> {
             val days = diffSeconds / 86400
             if (language == AppLanguage.ENGLISH) "Last synced: $days days ago" else "Terakhir sinkron: $days hari lalu"
+        }
+    }
+}
+
+@Composable
+private fun HealthSyncCard(
+    healthStatus: HealthSyncStatus,
+    isSyncingHealth: Boolean,
+    language: AppLanguage,
+    s: Strings,
+    onConnect: () -> Unit,
+    onSync: () -> Unit,
+) {
+    val platformTitle = when (healthStatus.platformType) {
+        HealthPlatformType.APPLE_HEALTH -> "Apple Health"
+        HealthPlatformType.HEALTH_CONNECT -> "Google Health Connect"
+        HealthPlatformType.UNSUPPORTED -> s.healthConnectSectionTitle
+    }
+
+    val platformIcon = when (healthStatus.platformType) {
+        HealthPlatformType.APPLE_HEALTH -> HeulaIcons.AppleHealth
+        HealthPlatformType.HEALTH_CONNECT -> HeulaIcons.HealthConnect
+        HealthPlatformType.UNSUPPORTED -> HeulaIcons.AppleHealth
+    }
+
+    val iconTint = when (healthStatus.platformType) {
+        HealthPlatformType.APPLE_HEALTH -> Color(0xFFFF2D55)
+        HealthPlatformType.HEALTH_CONNECT -> Color(0xFF00897B)
+        HealthPlatformType.UNSUPPORTED -> BrandPrimary
+    }
+
+    HeulaCard {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = platformIcon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(22.dp),
+            )
+            Text(
+                text = platformTitle,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = s.healthConnectSectionDesc,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 18.sp,
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (healthStatus.platformType == HealthPlatformType.UNSUPPORTED) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = s.healthConnectDesktopNote,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 16.sp,
+                )
+            }
+        } else {
+            val isConnected = healthStatus.state == HealthPermissionState.CONNECTED
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (isConnected) Color(0xFF34C759).copy(alpha = 0.12f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = if (isConnected) Icons.Default.Check else Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = if (isConnected) Color(0xFF34C759) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = if (isConnected) s.healthConnectConnected else s.healthConnectNotConnected,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isConnected) Color(0xFF248A3D) else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            if (!isConnected) {
+                HeulaButton(
+                    text = s.healthConnectConnectBtn,
+                    onClick = onConnect,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                OutlinedButton(
+                    onClick = onSync,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isSyncingHealth,
+                    contentPadding = PaddingValues(vertical = 10.dp),
+                ) {
+                    if (isSyncingHealth) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = BrandPrimary,
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (language == AppLanguage.ENGLISH) "Syncing Health..." else "Menyinkronkan...",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandPrimary,
+                        )
+                    } else {
+                        Text(
+                            text = s.healthConnectSyncBtn,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandPrimary,
+                        )
+                    }
+                }
+            }
         }
     }
 }

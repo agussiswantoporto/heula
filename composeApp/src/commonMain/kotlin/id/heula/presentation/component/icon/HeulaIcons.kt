@@ -227,4 +227,69 @@ object HeulaIcons {
             }
         }.build()
     }
+
+    // Apple Health Heart Icon (iOS HIG)
+    val AppleHealth: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "AppleHealth",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color(0xFFFF2D55))) {
+                moveTo(12.0f, 21.35f)
+                lineToRelative(-1.45f, -1.32f)
+                curveTo(5.4f, 15.36f, 2.0f, 12.28f, 2.0f, 8.5f)
+                curveTo(2.0f, 5.42f, 4.42f, 3.0f, 7.5f, 3.0f)
+                curveToRelative(1.74f, 0.0f, 3.41f, 0.81f, 4.5f, 2.09f)
+                curveTo(13.09f, 3.81f, 14.76f, 3.0f, 16.5f, 3.0f)
+                curveTo(19.58f, 3.0f, 22.0f, 5.42f, 22.0f, 8.5f)
+                curveToRelative(0.0f, 3.78f, -3.4f, 6.86f, -8.55f, 11.54f)
+                lineTo(12.0f, 21.35f)
+                close()
+            }
+        }.build()
+    }
+
+    // Google Health Connect Icon
+    val HealthConnect: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "HealthConnect",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                stroke = SolidColor(Color(0xFF00897B)),
+                strokeLineWidth = 2.2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round
+            ) {
+                moveTo(12.0f, 21.0f)
+                lineToRelative(-1.45f, -1.32f)
+                curveTo(5.4f, 15.36f, 2.0f, 12.28f, 2.0f, 8.5f)
+                curveTo(2.0f, 5.42f, 4.42f, 3.0f, 7.5f, 3.0f)
+                curveToRelative(1.74f, 0.0f, 3.41f, 0.81f, 4.5f, 2.09f)
+                curveTo(13.09f, 3.81f, 14.76f, 3.0f, 16.5f, 3.0f)
+                curveTo(19.58f, 3.0f, 22.0f, 5.42f, 22.0f, 8.5f)
+                curveToRelative(0.0f, 3.78f, -3.4f, 6.86f, -8.55f, 11.54f)
+                lineTo(12.0f, 21.0f)
+                close()
+            }
+            path(
+                stroke = SolidColor(Color(0xFF00897B)),
+                strokeLineWidth = 2.0f,
+                strokeLineCap = StrokeCap.Round
+            ) {
+                moveTo(8.5f, 12.0f)
+                horizontalLineToRelative(2.0f)
+                lineToRelative(1.5f, -3.0f)
+                lineToRelative(1.5f, 6.0f)
+                lineToRelative(1.5f, -3.0f)
+                horizontalLineToRelative(1.0f)
+            }
+        }.build()
+    }
 }

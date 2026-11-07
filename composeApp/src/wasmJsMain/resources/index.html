@@ -2,7 +2,11 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Heula">
+    <meta name="theme-color" content="#F2F3F5">
     <title>Heula - Teman Puasa Berkala</title>
     <style>
         html, body {
@@ -27,6 +31,7 @@
               client_id: this.clientId,
               scope: 'email profile openid',
               callback: (tokenResponse) => {
+                window.heulaAuthActive = false;
                 if (tokenResponse && tokenResponse.access_token) {
                   fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                     headers: { 'Authorization': 'Bearer ' + tokenResponse.access_token }
@@ -42,17 +47,26 @@
                     window.localStorage.setItem('heula_google_auth_result', result);
                   })
                   .catch(function(err) {
-                    console.error('Failed to fetch Google userinfo:', err);
+                    window.localStorage.setItem('heula_google_auth_result', '__ERR__:' + err.message);
                   });
                 } else if (tokenResponse && tokenResponse.error) {
-                  console.error('Google token error:', tokenResponse.error);
+                  window.localStorage.setItem('heula_google_auth_result', '__CANCELLED__:' + tokenResponse.error);
+                } else {
+                  window.localStorage.setItem('heula_google_auth_result', '__CANCELLED__:empty_response');
                 }
+              },
+              error_callback: function(error) {
+                window.heulaAuthActive = false;
+                console.warn('Google Identity error/cancel:', error);
+                window.localStorage.setItem('heula_google_auth_result', '__CANCELLED__:' + (error && error.type ? error.type : 'error'));
               }
             });
           }
         },
         signIn: function() {
           try {
+            window.localStorage.removeItem('heula_google_auth_result');
+            window.heulaAuthActive = true;
             if (!this.tokenClient) {
               this.init();
             }
@@ -65,20 +79,35 @@
                 if (self.tokenClient) {
                   self.tokenClient.requestAccessToken({ prompt: 'consent' });
                 } else {
-                  console.warn('Google Identity Services SDK is still loading or blocked by browser/extension.');
+                  window.heulaAuthActive = false;
+                  window.localStorage.setItem('heula_google_auth_result', '__ERR__:Google Identity SDK belum siap.');
                 }
               }, 400);
             }
           } catch (e) {
-            console.error('Google Sign-In trigger error:', e);
+            window.heulaAuthActive = false;
+            window.localStorage.setItem('heula_google_auth_result', '__ERR__:' + e.message);
           }
         },
         signOut: function() {
           try {
+            window.heulaAuthActive = false;
             window.localStorage.removeItem('heula_google_auth_result');
           } catch (e) {}
         }
       };
+
+      // Detect return to window/app if user dismissed popup outside callback
+      window.addEventListener('focus', function() {
+        if (window.heulaAuthActive) {
+          setTimeout(function() {
+            if (window.heulaAuthActive && !window.localStorage.getItem('heula_google_auth_result')) {
+              window.heulaAuthActive = false;
+              window.localStorage.setItem('heula_google_auth_result', '__CANCELLED__:focus_returned');
+            }
+          }, 2500);
+        }
+      });
 
       window.heulaFirestore = {
         projectId: 'heula-514007',
@@ -127,6 +156,451 @@
           .catch(function(err) {
             window.localStorage.setItem('heula_sync_download_result', '__ERR__:' + err.message);
           });
+        }
+      };
+
+      window.heulaShareImage = {
+        exportImage: function(sessionJson, configJson) {
+          try {
+            var session = JSON.parse(sessionJson || '{}');
+            var config = JSON.parse(configJson || '{}');
+
+            var isStory = config.aspectRatio === 'STORY';
+            var W = isStory ? 1080 : 1080;
+            var H = isStory ? 1920 : 1080;
+
+            var canvas = document.createElement('canvas');
+            canvas.width = W;
+            canvas.height = H;
+            var ctx = canvas.getContext('2d');
+
+            // 100% Pure Transparent Alpha Background
+            ctx.clearRect(0, 0, W, H);
+
+            // Compute time formats
+            var durMs = session.durationMs || (session.endMs - session.startMs) || 0;
+            var totalMin = Math.floor(durMs / 60000);
+            var hours = Math.floor(totalMin / 60);
+            var mins = totalMin % 60;
+            var durHoursStr = String(hours);
+            var durMinsStr = (mins < 10 ? '0' : '') + mins;
+            var durFormatted = hours + ' JAM ' + mins + ' MENIT';
+
+            var startDate = new Date(session.startMs || Date.now());
+            var endDate = new Date(session.endMs || Date.now());
+            var timeOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
+            var startStr = startDate.toLocaleTimeString('id-ID', timeOptions);
+            var endStr = endDate.toLocaleTimeString('id-ID', timeOptions);
+
+            var dateStr = endDate.toLocaleDateString('id-ID', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
+            });
+
+            var template = config.template || 'MODERN_GRADIENT';
+            var mainColor = config.textColorHex || '#FFFFFF';
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            var centerX = W / 2;
+            var centerY = H / 2;
+
+            // Draw based on template
+            if (template === 'MINIMALIST') {
+              // Minimalist: Clean, thin lines, pure typographic beauty
+              ctx.shadowColor = 'rgba(0,0,0,0.5)';
+              ctx.shadowBlur = 12;
+
+              if (config.showBranding) {
+                ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillStyle = mainColor;
+                ctx.letterSpacing = '8px';
+                ctx.fillText('H E U L A', centerX, centerY - 280);
+              }
+
+              ctx.font = '900 190px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.fillStyle = mainColor;
+              ctx.fillText(hours + ':' + durMinsStr, centerX, centerY - 60);
+
+              ctx.font = '700 30px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.fillStyle = mainColor;
+              ctx.fillText('JAM BERPUASA', centerX, centerY + 70);
+
+              // Thin divider line
+              ctx.strokeStyle = mainColor;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(centerX - 160, centerY + 120);
+              ctx.lineTo(centerX + 160, centerY + 120);
+              ctx.stroke();
+
+              var metaY = centerY + 180;
+              if (config.showTarget) {
+                ctx.font = '500 28px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillText('Target ' + (session.planLabel || '16:8') + ' • ' + (session.completed ? 'Tercapai' : 'Selesai'), centerX, metaY);
+                metaY += 50;
+              }
+              if (config.showTimes) {
+                ctx.font = '400 24px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillText(startStr + ' — ' + endStr, centerX, metaY);
+                metaY += 45;
+              }
+              if (config.showDate) {
+                ctx.font = '400 22px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillText(dateStr, centerX, metaY);
+              }
+
+            } else if (template === 'MODERN_GRADIENT') {
+              // Modern Gradient: Strava athletic orange gradient badges and bold numbers
+              ctx.shadowColor = 'rgba(0,0,0,0.6)';
+              ctx.shadowBlur = 16;
+
+              // Top Pill Badge
+              if (config.showBranding) {
+                var grad = ctx.createLinearGradient(centerX - 180, 0, centerX + 180, 0);
+                grad.addColorStop(0, '#FC5200');
+                grad.addColorStop(1, '#FF7A00');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.roundRect(centerX - 150, centerY - 320, 300, 64, 32);
+                ctx.fill();
+
+                ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText('FASTING ACTIVE', centerX, centerY - 288);
+              }
+
+              // Giant Duration
+              ctx.font = 'bold 220px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText(hours + ':' + durMinsStr, centerX, centerY - 60);
+
+              ctx.font = '700 36px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.fillStyle = '#FC5200';
+              ctx.fillText('BERHASIL BERPUASA', centerX, centerY + 80);
+
+              // Secondary metrics grid pill
+              var cardW = 680;
+              var cardH = 130;
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.roundRect(centerX - cardW/2, centerY + 140, cardW, cardH, 24);
+              ctx.fill();
+              ctx.stroke();
+
+              ctx.textAlign = 'left';
+              var cLeft = centerX - cardW/2 + 40;
+              var cMid = centerX + 40;
+
+              if (config.showTarget) {
+                ctx.font = '400 20px -apple-system, sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.fillText('POLA PUASA', cLeft, centerY + 180);
+                ctx.font = 'bold 32px -apple-system, sans-serif';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(session.planLabel || '16:8', cLeft, centerY + 225);
+              }
+
+              if (config.showTimes) {
+                ctx.font = '400 20px -apple-system, sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.fillText('WAKTU', cMid, centerY + 180);
+                ctx.font = 'bold 32px -apple-system, sans-serif';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(startStr + ' - ' + endStr, cMid, centerY + 225);
+              }
+
+              if (config.showDate) {
+                ctx.textAlign = 'center';
+                ctx.font = '500 24px -apple-system, sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.fillText(dateStr, centerX, centerY + 320);
+              }
+
+            } else if (template === 'GLASS_STYLE') {
+              // Glass Style: Modern translucent frosted card
+              var glassW = Math.min(W - 140, 780);
+              var glassH = isStory ? 680 : 560;
+              var glassX = centerX - glassW / 2;
+              var glassY = centerY - glassH / 2;
+
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.roundRect(glassX, glassY, glassW, glassH, 44);
+              ctx.fill();
+              ctx.stroke();
+
+              if (config.showBranding) {
+                ctx.font = '700 26px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillText('HEULA FASTING', centerX, glassY + 65);
+              }
+
+              ctx.font = 'bold 170px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText(hours + 'j ' + durMinsStr + 'm', centerX, glassY + 220);
+
+              ctx.font = '600 28px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+              ctx.fillText('Target ' + (session.planLabel || '16:8') + ' Tuntas', centerX, glassY + 330);
+
+              if (config.showTimes) {
+                ctx.font = '400 24px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.fillText(startStr + ' — ' + endStr, centerX, glassY + 390);
+              }
+
+              if (config.showDate) {
+                ctx.font = '400 22px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.fillText(dateStr, centerX, glassY + 450);
+              }
+
+            } else if (template === 'TYPOGRAPHY') {
+              // Typography: Bold Swiss Editorial Poster style
+              ctx.shadowColor = 'rgba(0,0,0,0.5)';
+              ctx.shadowBlur = 10;
+              ctx.textAlign = 'left';
+
+              var marginX = W * 0.12;
+              var curY = centerY - 180;
+
+              if (config.showBranding) {
+                ctx.font = '800 36px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillStyle = mainColor;
+                ctx.fillText('FASTING RECORD', marginX, curY);
+                curY += 80;
+              }
+
+              ctx.font = '900 260px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.fillStyle = mainColor;
+              ctx.fillText(durHoursStr, marginX, curY + 120);
+
+              ctx.font = '800 64px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.fillStyle = mainColor;
+              ctx.fillText('HOURS', marginX + 340, curY + 40);
+              ctx.fillText(durMinsStr + ' MIN', marginX + 340, curY + 115);
+
+              curY += 250;
+
+              if (config.showTarget || config.showTimes) {
+                ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillStyle = mainColor;
+                ctx.fillText((session.planLabel || '16:8') + ' • ' + startStr + ' — ' + endStr, marginX, curY);
+                curY += 50;
+              }
+
+              if (config.showDate) {
+                ctx.font = '400 26px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.fillStyle = mainColor;
+                ctx.fillText(dateStr, marginX, curY);
+              }
+
+            } else if (template === 'EDITORIAL') {
+              // Editorial: Health Magazine aesthetic with refined letterspacing
+              ctx.shadowColor = 'rgba(0,0,0,0.5)';
+              ctx.shadowBlur = 8;
+
+              if (config.showBranding) {
+                ctx.font = '400 28px "Georgia", serif';
+                ctx.fillStyle = mainColor;
+                ctx.fillText('— HEULA JOURNAL —', centerX, centerY - 240);
+              }
+
+              ctx.font = '300 160px "Georgia", serif';
+              ctx.fillStyle = mainColor;
+              ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, centerY - 60);
+
+              ctx.font = 'italic 32px "Georgia", serif';
+              ctx.fillStyle = mainColor;
+              ctx.fillText('Intermittent Fasting Completed', centerX, centerY + 60);
+
+              ctx.strokeStyle = mainColor;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(centerX - 120, centerY + 110);
+              ctx.lineTo(centerX + 120, centerY + 110);
+              ctx.stroke();
+
+              var eY = centerY + 170;
+              if (config.showTarget) {
+                ctx.font = '400 24px -apple-system, sans-serif';
+                ctx.fillText('Target: ' + (session.planLabel || '16:8'), centerX, eY);
+                eY += 45;
+              }
+              if (config.showDate) {
+                ctx.font = '400 22px -apple-system, sans-serif';
+                ctx.fillText(dateStr, centerX, eY);
+              }
+
+            } else if (template === 'NEON') {
+              // Neon: Cyberpunk athletic neon lime (#CCFF00) and electric cyan
+              ctx.shadowColor = '#CCFF00';
+              ctx.shadowBlur = 24;
+
+              if (config.showBranding) {
+                ctx.font = '900 32px -apple-system, sans-serif';
+                ctx.fillStyle = '#CCFF00';
+                ctx.fillText('// HEULA.PRO', centerX, centerY - 280);
+              }
+
+              ctx.font = '900 210px -apple-system, sans-serif';
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText(hours + ':' + durMinsStr, centerX, centerY - 60);
+
+              ctx.shadowBlur = 18;
+              ctx.font = '800 36px -apple-system, sans-serif';
+              ctx.fillStyle = '#CCFF00';
+              ctx.fillText('FASTING GOAL UNLOCKED', centerX, centerY + 80);
+
+              var nY = centerY + 160;
+              if (config.showTarget) {
+                ctx.font = '700 28px -apple-system, sans-serif';
+                ctx.fillStyle = '#00F0FF';
+                ctx.fillText('TARGET ' + (session.planLabel || '16:8'), centerX, nY);
+                nY += 50;
+              }
+              if (config.showTimes) {
+                ctx.font = '500 24px -apple-system, sans-serif';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(startStr + ' — ' + endStr, centerX, nY);
+                nY += 45;
+              }
+              if (config.showDate) {
+                ctx.font = '400 22px -apple-system, sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.fillText(dateStr, centerX, nY);
+              }
+
+            } else if (template === 'DARK_MODE') {
+              // Dark Mode: Solid black high contrast elements for bright background photos
+              var cardW = Math.min(W - 120, 760);
+              var cardH = isStory ? 560 : 480;
+
+              ctx.fillStyle = 'rgba(20, 20, 22, 0.88)';
+              ctx.beginPath();
+              ctx.roundRect(centerX - cardW/2, centerY - cardH/2, cardW, cardH, 36);
+              ctx.fill();
+
+              if (config.showBranding) {
+                ctx.font = '700 24px -apple-system, sans-serif';
+                ctx.fillStyle = '#FC5200';
+                ctx.fillText('HEULA ACTIVITY', centerX, centerY - cardH/2 + 65);
+              }
+
+              ctx.font = 'bold 150px -apple-system, sans-serif';
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, centerY - cardH/2 + 200);
+
+              ctx.font = '600 28px -apple-system, sans-serif';
+              ctx.fillStyle = '#34C759';
+              ctx.fillText('Target ' + (session.planLabel || '16:8') + ' Selesai', centerX, centerY - cardH/2 + 300);
+
+              if (config.showTimes) {
+                ctx.font = '400 24px -apple-system, sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.fillText(startStr + ' — ' + endStr, centerX, centerY - cardH/2 + 360);
+              }
+
+              if (config.showDate) {
+                ctx.font = '400 22px -apple-system, sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillText(dateStr, centerX, centerY - cardH/2 + 420);
+              }
+
+            } else {
+              // CLEAN_WHITE: Pure white text with soft shadow for universal readability
+              ctx.shadowColor = 'rgba(0,0,0,0.65)';
+              ctx.shadowBlur = 20;
+
+              if (config.showBranding) {
+                ctx.font = '700 30px -apple-system, sans-serif';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText('HEULA', centerX, centerY - 260);
+              }
+
+              ctx.font = 'bold 200px -apple-system, sans-serif';
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText(hours + ':' + durMinsStr, centerX, centerY - 60);
+
+              ctx.font = '600 32px -apple-system, sans-serif';
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText('TARGET ' + (session.planLabel || '16:8') + ' COMPLETED', centerX, centerY + 80);
+
+              var wY = centerY + 160;
+              if (config.showTimes) {
+                ctx.font = '400 26px -apple-system, sans-serif';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(startStr + ' — ' + endStr, centerX, wY);
+                wY += 50;
+              }
+              if (config.showDate) {
+                ctx.font = '400 24px -apple-system, sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.fillText(dateStr, centerX, wY);
+              }
+            }
+
+            ctx.restore();
+
+            // Export to Transparent PNG
+            canvas.toBlob(function(blob) {
+              if (!blob) {
+                window.localStorage.setItem('heula_share_export_status', 'ERR:Gagal membuat blob gambar');
+                return;
+              }
+
+              var fileName = 'heula-fast-' + Date.now() + '.png';
+              var file = new File([blob], fileName, { type: 'image/png' });
+
+              // Web Share API on Mobile (iOS / Android)
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                  files: [file],
+                  title: 'Jejak Puasa Heula',
+                  text: 'Saya baru saja menyelesaikan puasa ' + durFormatted + ' dengan Heula!'
+                })
+                .then(function() {
+                  window.localStorage.setItem('heula_share_export_status', 'OK');
+                })
+                .catch(function(err) {
+                  // User cancelled share or failed
+                  if (err.name !== 'AbortError') {
+                    // Fallback to download
+                    window.heulaShareImage.triggerDownload(blob, fileName);
+                  }
+                  window.localStorage.setItem('heula_share_export_status', 'OK');
+                });
+              } else {
+                // Direct download fallback
+                window.heulaShareImage.triggerDownload(blob, fileName);
+                window.localStorage.setItem('heula_share_export_status', 'OK');
+              }
+            }, 'image/png');
+
+          } catch (e) {
+            console.error('Share export error:', e);
+            window.localStorage.setItem('heula_share_export_status', 'ERR:' + e.message);
+          }
+        },
+
+        triggerDownload: function(blob, fileName) {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
         }
       };
     </script>

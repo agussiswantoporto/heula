@@ -30,6 +30,7 @@ import id.heula.presentation.component.icon.HeulaIcons
 import id.heula.presentation.component.icon.getMoodVisual
 import id.heula.presentation.component.timer.ProgressRing
 import id.heula.presentation.component.timer.StageIndicator
+import id.heula.presentation.screen.share.FastingShareModal
 import id.heula.presentation.component.ui.ButtonVariant
 import id.heula.presentation.component.ui.HeulaBadge
 import id.heula.presentation.component.ui.HeulaButton
@@ -73,6 +74,7 @@ fun HomeScreen(
     var showEditStartDialog by remember { mutableStateOf(false) }
     var showPlanSelector by remember { mutableStateOf(false) }
     var showCustomHoursDialog by remember { mutableStateOf(false) }
+    var sessionToShare by remember { mutableStateOf<FastingSession?>(null) }
 
     BoxWithConstraints(
         modifier = modifier
@@ -243,10 +245,33 @@ fun HomeScreen(
             isCompleted = elapsedMs >= targetMs,
             s = s,
             onConfirm = { mood, note ->
+                val session = FastingSession(
+                    planId = activeFast!!.planId,
+                    planLabel = activeFast!!.planLabel,
+                    targetHours = activeFast!!.targetHours,
+                    startMs = activeFast!!.startMs,
+                    endMs = currentTimeMs,
+                    durationMs = elapsedMs,
+                    completed = elapsedMs >= targetMs,
+                    createdAt = currentTimeMs,
+                    mood = mood,
+                    note = note
+                )
                 store.stopFast(currentTimeMs, mood, note)
                 showFinishFastModal = false
+                sessionToShare = session
             },
             onDismiss = { showFinishFastModal = false },
+        )
+    }
+
+    if (sessionToShare != null) {
+        FastingShareModal(
+            session = sessionToShare!!,
+            onDismiss = { sessionToShare = null },
+            onExport = { config, onResult ->
+                store.exportShareImage(sessionToShare!!, config, onResult)
+            }
         )
     }
 
