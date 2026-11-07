@@ -121,29 +121,44 @@ fun FastingShareModal(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    // 1. Checkerboard Live Transparent Preview
+                    // 1. Checkerboard Live Transparent Preview (Exact Aspect Ratio 9:16 Story / 1:1 Feed)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(if (config.aspectRatio == ShareAspectRatio.STORY) 340.dp else 260.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
+                            .padding(vertical = 4.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        // Background Checkerboard Pattern
-                        CheckerboardPattern(modifier = Modifier.fillMaxSize())
+                        val isStory = config.aspectRatio == ShareAspectRatio.STORY
+                        val previewHeight = if (isStory) 360.dp else 280.dp
+                        val previewWidth = if (isStory) 202.dp else 280.dp
 
-                        // Render Card Overlay based on Template
-                        ShareCardPreview(
-                            session = session,
-                            config = config,
-                            durFormatted = durFormatted,
-                            hours = hours,
-                            mins = mins,
-                            startStr = startStr,
-                            endStr = endStr,
-                            dateStr = dateStr,
-                        )
+                        Box(
+                            modifier = Modifier
+                                .width(previewWidth)
+                                .height(previewHeight)
+                                .clip(RoundedCornerShape(if (isStory) 24.dp else 18.dp))
+                                .border(
+                                    width = 1.5.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                                    shape = RoundedCornerShape(if (isStory) 24.dp else 18.dp),
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            // Background Checkerboard Pattern
+                            CheckerboardPattern(modifier = Modifier.fillMaxSize())
+
+                            // Render Card Overlay based on Template
+                            ShareCardPreview(
+                                session = session,
+                                config = config,
+                                durFormatted = durFormatted,
+                                hours = hours,
+                                mins = mins,
+                                startStr = startStr,
+                                endStr = endStr,
+                                dateStr = dateStr,
+                            )
+                        }
                     }
 
                     // 2. Format Switcher (Story vs Feed)
@@ -498,7 +513,7 @@ private fun ShareCardPreview(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         if (config.showBranding) {
-                            Text("HEULA FASTING", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("H E U L A   F A S T I N G", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 2.sp)
                         }
                         Text(
                             text = "${hours}j ${mins}m",
@@ -537,8 +552,8 @@ private fun ShareCardPreview(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Column {
-                            Text("HOURS", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor)
-                            Text("$mins MIN", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor)
+                            Text("JAM", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = textColor)
+                            Text("$mins MNT", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = textColor)
                         }
                     }
                     if (config.showTarget || config.showTimes) {
@@ -624,7 +639,7 @@ private fun ShareCardPreview(
                             Text("HEULA ACTIVITY", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFC5200))
                         }
                         Text(
-                            text = "${hours}h ${mins}m",
+                            text = "${hours}j ${mins}m",
                             fontSize = 38.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
@@ -646,7 +661,7 @@ private fun ShareCardPreview(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     if (config.showBranding) {
-                        Text("HEULA", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("H  E  U  L  A", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 3.sp)
                     }
                     Text(
                         text = durFormatted,

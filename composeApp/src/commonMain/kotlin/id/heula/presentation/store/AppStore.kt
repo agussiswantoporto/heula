@@ -11,7 +11,9 @@ import id.heula.domain.usecase.AppSettings
 import id.heula.domain.usecase.toActiveFast
 import id.heula.domain.usecase.toSerializable
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -90,12 +92,36 @@ class AppStore(
         }
     }
 
+    fun triggerAutoSync() {
+        if (currentUser.value != null && syncState.value != SyncState.SYNCING) {
+            scope.launch {
+                authRepository.syncAllData()
+            }
+        }
+    }
+
     init {
         scope.launch {
             settingsRepository.observe().collect { _settings.value = it }
         }
         scope.launch {
             healthSyncService.checkStatus()
+        }
+        // Auto-sync immediately on launch if user is logged in
+        scope.launch {
+            delay(1200L) // Wait for initial local settings to load
+            if (currentUser.value != null && syncState.value != SyncState.SYNCING) {
+                authRepository.syncAllData()
+            }
+        }
+        // Background cross-device sync loop: polls every 25 seconds for counter & session updates
+        scope.launch {
+            while (isActive) {
+                delay(25_000L)
+                if (currentUser.value != null && syncState.value != SyncState.SYNCING) {
+                    authRepository.syncAllData()
+                }
+            }
         }
     }
 
@@ -150,22 +176,28 @@ class AppStore(
 
     fun setReminders(reminders: Reminders) = update { copy(reminders = reminders) }
 
-    fun startFast(nowMs: Long = Clock.System.now().toEpochMilliseconds()) = update {
-        copy(
-            activeFast = ActiveFast(
-                startMs = nowMs,
-                targetHours = resolveTargetHours(chosenMethod, customFastingHours),
-                planId = chosenMethod,
-                planLabel = resolvePlanLabel(chosenMethod, customFastingHours),
-            ).toSerializable(),
-            eatingWindowStartMs = null, // Close eating window when fasting starts
-        )
+    fun startFast(nowMs: Long = Clock.System.now().toEpochMilliseconds()) {
+        update {
+            copy(
+                activeFast = ActiveFast(
+                    startMs = nowMs,
+                    targetHours = resolveTargetHours(chosenMethod, customFastingHours),
+                    planId = chosenMethod,
+                    planLabel = resolvePlanLabel(chosenMethod, customFastingHours),
+                ).toSerializable(),
+                eatingWindowStartMs = null, // Close eating window when fasting starts
+            )
+        }
+        triggerAutoSync()
     }
 
-    fun editStartTime(startMs: Long) = update {
-        val fast = activeFast ?: return@update this
-        if (startMs > Clock.System.now().toEpochMilliseconds()) return@update this
-        copy(activeFast = fast.copy(startMs = startMs))
+    fun editStartTime(startMs: Long) {
+        update {
+            val fast = activeFast ?: return@update this
+            if (startMs > Clock.System.now().toEpochMilliseconds()) return@update this
+            copy(activeFast = fast.copy(startMs = startMs))
+        }
+        triggerAutoSync()
     }
 
     fun updateStartTime(startMs: Long) = editStartTime(startMs)
@@ -202,24 +234,28 @@ class AppStore(
                     eatingWindowHours = eatingHours,
                 )
             }
+            triggerAutoSync()
         }
     }
 
-    fun addWater(ml: Int) = update {
-        val todayEpochDay = Clock.System.now().toEpochMilliseconds() / 86_400_000L
-        val currentAmount = if (waterDateEpochDay == todayEpochDay) waterIntakeMl else 0
-        val newAmount = (currentAmount + ml).coerceIn(0, 10000)
+    fun addWater(ml: Int) {
+        update {
+            val todayEpochDay = Clock.System.now().toEpochMilliseconds() / 86_400_000L
+            val currentAmount = if (waterDateEpochDay == todayEpochDay) waterIntakeMl else 0
+            val newAmount = (currentAmount + ml).coerceIn(0, 10000)
 
-        if (healthStatus.value.state == HealthPermissionState.CONNECTED && ml > 0) {
-            scope.launch {
-                healthSyncService.syncHydration(ml.toDouble(), Clock.System.now().toEpochMilliseconds())
+            if (healthStatus.value.state == HealthPermissionState.CONNECTED && ml > 0) {
+                scope.launch {
+                    healthSyncService.syncHydration(ml.toDouble(), Clock.System.now().toEpochMilliseconds())
+                }
             }
-        }
 
-        copy(
-            waterIntakeMl = newAmount,
-            waterDateEpochDay = todayEpochDay,
-        )
+            copy(
+                waterIntakeMl = newAmount,
+                waterDateEpochDay = todayEpochDay,
+            )
+        }
+        triggerAutoSync()
     }
 
     fun resetAll() {
@@ -227,6 +263,7 @@ class AppStore(
             sessionRepository.clearAll()
             weightRepository.clearAll()
             update { AppSettings() }
+            triggerAutoSync()
         }
     }
 
@@ -242,23 +279,36 @@ class AppStore(
             if (healthStatus.value.state == HealthPermissionState.CONNECTED) {
                 healthSyncService.syncWeight(weightKg, nowMs)
             }
+            triggerAutoSync()
         }
     }
 
     fun deleteWeight(id: Long) {
-        scope.launch { weightRepository.delete(id) }
+        scope.launch {
+            weightRepository.delete(id)
+            triggerAutoSync()
+        }
     }
 
     fun deleteSession(id: Long) {
-        scope.launch { sessionRepository.delete(id) }
+        scope.launch {
+            sessionRepository.delete(id)
+            triggerAutoSync()
+        }
     }
 
     fun updateSession(session: FastingSession) {
-        scope.launch { sessionRepository.update(session) }
+        scope.launch {
+            sessionRepository.update(session)
+            triggerAutoSync()
+        }
     }
 
     fun updateMoodNote(sessionId: Long, mood: Mood?, note: String?) {
-        scope.launch { sessionRepository.setMoodNote(sessionId, mood, note) }
+        scope.launch {
+            sessionRepository.setMoodNote(sessionId, mood, note)
+            triggerAutoSync()
+        }
     }
 }
 

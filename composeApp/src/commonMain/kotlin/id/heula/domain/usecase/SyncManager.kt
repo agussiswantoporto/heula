@@ -44,12 +44,8 @@ class SyncManager(
                 weightRepository.add(w)
             }
 
-            // 5. Smart Merge Settings
-            val mergedSettings = if (cloudData != null && cloudData.settings.onboarded && !localSettings.onboarded) {
-                cloudData.settings
-            } else {
-                localSettings
-            }
+            // 5. Smart Merge Settings (Includes active fasting counter & eating window)
+            val mergedSettings = mergeSettings(localSettings, cloudData?.settings, mergedSessions)
             settingsRepository.save(mergedSettings)
 
             // 6. Upload merged data with user info to Cloud
@@ -109,5 +105,83 @@ class SyncManager(
         return map.values.sortedBy { it.recordedAt }.mapIndexed { idx, item ->
             item.copy(id = (idx + 1).toLong())
         }
+    }
+
+    private fun mergeSettings(
+        local: AppSettings,
+        cloud: AppSettings?,
+        sessions: List<FastingSession>,
+    ): AppSettings {
+        if (cloud == null) return local
+
+        val onboarded = local.onboarded || cloud.onboarded
+        val profiling = local.profiling ?: cloud.profiling
+        val chosenMethod = if (local.chosenMethod != id.heula.domain.model.MethodId.SIXTEEN_EIGHT) local.chosenMethod else cloud.chosenMethod
+        val customFastingHours = if (local.customFastingHours != 16.0) local.customFastingHours else cloud.customFastingHours
+        val dailyGoalHours = if (local.dailyGoalHours != 16.0) local.dailyGoalHours else cloud.dailyGoalHours
+
+        // Check if an active fast has already been recorded in completed sessions
+        val localFast = local.activeFast?.takeIf { fast ->
+            sessions.none { it.startMs == fast.startMs }
+        }
+        val cloudFast = cloud.activeFast?.takeIf { fast ->
+            sessions.none { it.startMs == fast.startMs }
+        }
+
+        // Determine resolved active fast and eating window state
+        val (resolvedActiveFast, resolvedEatingStartMs, resolvedEatingHours) = when {
+            // Case 1: Both devices report an active fast -> newer one wins
+            localFast != null && cloudFast != null -> {
+                if (localFast.startMs >= cloudFast.startMs) {
+                    Triple(localFast, null, local.eatingWindowHours)
+                } else {
+                    Triple(cloudFast, null, cloud.eatingWindowHours)
+                }
+            }
+            // Case 2: Only local has active fast
+            localFast != null -> {
+                val cloudEatingStart = cloud.eatingWindowStartMs ?: 0L
+                if (cloudEatingStart > localFast.startMs) {
+                    Triple(null, cloudEatingStart, cloud.eatingWindowHours)
+                } else {
+                    Triple(localFast, null, local.eatingWindowHours)
+                }
+            }
+            // Case 3: Only cloud has active fast
+            cloudFast != null -> {
+                val localEatingStart = local.eatingWindowStartMs ?: 0L
+                if (localEatingStart > cloudFast.startMs) {
+                    Triple(null, localEatingStart, local.eatingWindowHours)
+                } else {
+                    Triple(cloudFast, null, cloud.eatingWindowHours)
+                }
+            }
+            // Case 4: Neither is actively fasting -> sync eating window
+            else -> {
+                val localEating = local.eatingWindowStartMs ?: 0L
+                val cloudEating = cloud.eatingWindowStartMs ?: 0L
+                val latestEating = maxOf(localEating, cloudEating)
+                val hours = if (latestEating == localEating && localEating > 0L) local.eatingWindowHours else cloud.eatingWindowHours
+                Triple(null, if (latestEating > 0L) latestEating else null, hours)
+            }
+        }
+
+        val todayEpochDay = Clock.System.now().toEpochMilliseconds() / 86_400_000L
+        val localWaterToday = if (local.waterDateEpochDay == todayEpochDay) local.waterIntakeMl else 0
+        val cloudWaterToday = if (cloud.waterDateEpochDay == todayEpochDay) cloud.waterIntakeMl else 0
+        val mergedWater = maxOf(localWaterToday, cloudWaterToday)
+
+        return local.copy(
+            onboarded = onboarded,
+            profiling = profiling,
+            chosenMethod = chosenMethod,
+            customFastingHours = customFastingHours,
+            dailyGoalHours = dailyGoalHours,
+            activeFast = resolvedActiveFast,
+            eatingWindowStartMs = resolvedEatingStartMs,
+            eatingWindowHours = resolvedEatingHours,
+            waterIntakeMl = mergedWater,
+            waterDateEpochDay = todayEpochDay,
+        )
     }
 }

@@ -166,7 +166,7 @@
             var config = JSON.parse(configJson || '{}');
 
             var isStory = config.aspectRatio === 'STORY';
-            var W = isStory ? 1080 : 1080;
+            var W = 1080;
             var H = isStory ? 1920 : 1080;
 
             var canvas = document.createElement('canvas');
@@ -177,375 +177,444 @@
             // 100% Pure Transparent Alpha Background
             ctx.clearRect(0, 0, W, H);
 
-            // Compute time formats
+            // Universal RoundRect helper compatible with all browsers & WebKit versions
+            function roundRect(x, y, w, h, r) {
+              ctx.beginPath();
+              ctx.moveTo(x + r, y);
+              ctx.lineTo(x + w - r, y);
+              ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+              ctx.lineTo(x + w, y + h - r);
+              ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+              ctx.lineTo(x + r, y + h);
+              ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+              ctx.lineTo(x, y + r);
+              ctx.quadraticCurveTo(x, y, x + r, y);
+              ctx.closePath();
+            }
+
+            // Compute time formats - matching Kotlin logic 1:1
             var durMs = session.durationMs || (session.endMs - session.startMs) || 0;
             var totalMin = Math.floor(durMs / 60000);
             var hours = Math.floor(totalMin / 60);
             var mins = totalMin % 60;
-            var durHoursStr = String(hours);
-            var durMinsStr = (mins < 10 ? '0' : '') + mins;
-            var durFormatted = hours + ' JAM ' + mins + ' MENIT';
+            function pad(n) { return (n < 10 ? '0' : '') + n; }
+            var durMinsStr = pad(mins);
+            var durFormatted = hours + ':' + durMinsStr;
 
             var startDate = new Date(session.startMs || Date.now());
             var endDate = new Date(session.endMs || Date.now());
-            var timeOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
-            var startStr = startDate.toLocaleTimeString('id-ID', timeOptions);
-            var endStr = endDate.toLocaleTimeString('id-ID', timeOptions);
+            var startStr = pad(startDate.getHours()) + ':' + pad(startDate.getMinutes());
+            var endStr = pad(endDate.getHours()) + ':' + pad(endDate.getMinutes());
 
-            var dateStr = endDate.toLocaleDateString('id-ID', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric'
-            });
+            var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+            var dateStr = endDate.getDate() + ' ' + monthNames[endDate.getMonth()] + ' ' + endDate.getFullYear();
 
             var template = config.template || 'MODERN_GRADIENT';
             var mainColor = config.textColorHex || '#FFFFFF';
+            var planLabel = session.planLabel || '16:8';
 
             ctx.save();
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
             var centerX = W / 2;
-            var centerY = H / 2;
+            var centerY = isStory ? (H * 0.48) : (H * 0.50);
+            var s = isStory ? 1.0 : 0.82; // Scaling factor for 1:1 vs 9:16
 
-            // Draw based on template
+            var sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Plus Jakarta Sans", "Inter", Roboto, sans-serif';
+            var serifFont = '"Playfair Display", "Georgia", "Times New Roman", serif';
+
             if (template === 'MINIMALIST') {
-              // Minimalist: Clean, thin lines, pure typographic beauty
-              ctx.shadowColor = 'rgba(0,0,0,0.5)';
-              ctx.shadowBlur = 12;
+              var baseY = centerY - (130 * s);
 
               if (config.showBranding) {
-                ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.font = '700 ' + Math.round(28 * s) + 'px ' + sansFont;
                 ctx.fillStyle = mainColor;
-                ctx.letterSpacing = '8px';
-                ctx.fillText('H E U L A', centerX, centerY - 280);
+                ctx.shadowColor = 'rgba(0,0,0,0.35)';
+                ctx.shadowBlur = 8;
+                ctx.fillText('H  E  U  L  A', centerX, baseY);
+                baseY += (70 * s);
               }
 
-              ctx.font = '900 190px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.font = '900 ' + Math.round(175 * s) + 'px ' + sansFont;
               ctx.fillStyle = mainColor;
-              ctx.fillText(hours + ':' + durMinsStr, centerX, centerY - 60);
+              ctx.shadowColor = 'rgba(0,0,0,0.4)';
+              ctx.shadowBlur = 12;
+              ctx.fillText(durFormatted, centerX, baseY + (75 * s));
+              baseY += (175 * s);
 
-              ctx.font = '700 30px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.font = '700 ' + Math.round(28 * s) + 'px ' + sansFont;
               ctx.fillStyle = mainColor;
-              ctx.fillText('JAM BERPUASA', centerX, centerY + 70);
+              ctx.fillText('JAM BERPUASA', centerX, baseY);
+              baseY += (45 * s);
 
               // Thin divider line
-              ctx.strokeStyle = mainColor;
-              ctx.lineWidth = 2;
-              ctx.beginPath();
-              ctx.moveTo(centerX - 160, centerY + 120);
-              ctx.lineTo(centerX + 160, centerY + 120);
-              ctx.stroke();
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = mainColor;
+              ctx.fillRect(centerX - (60 * s), baseY, 120 * s, 3 * s);
+              baseY += (40 * s);
 
-              var metaY = centerY + 180;
               if (config.showTarget) {
-                ctx.font = '500 28px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
-                ctx.fillText('Target ' + (session.planLabel || '16:8') + ' • ' + (session.completed ? 'Tercapai' : 'Selesai'), centerX, metaY);
-                metaY += 50;
+                ctx.font = '600 ' + Math.round(28 * s) + 'px ' + sansFont;
+                ctx.fillStyle = mainColor;
+                ctx.fillText('Target ' + planLabel + ' • Selesai', centerX, baseY);
+                baseY += (45 * s);
               }
               if (config.showTimes) {
-                ctx.font = '400 24px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
-                ctx.fillText(startStr + ' — ' + endStr, centerX, metaY);
-                metaY += 45;
+                ctx.font = '400 ' + Math.round(25 * s) + 'px ' + sansFont;
+                ctx.fillStyle = mainColor;
+                ctx.globalAlpha = 0.85;
+                ctx.fillText(startStr + ' — ' + endStr, centerX, baseY);
+                ctx.globalAlpha = 1.0;
+                baseY += (40 * s);
               }
               if (config.showDate) {
-                ctx.font = '400 22px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
-                ctx.fillText(dateStr, centerX, metaY);
+                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
+                ctx.fillStyle = mainColor;
+                ctx.globalAlpha = 0.65;
+                ctx.fillText(dateStr, centerX, baseY);
+                ctx.globalAlpha = 1.0;
               }
 
             } else if (template === 'MODERN_GRADIENT') {
-              // Modern Gradient: Strava athletic orange gradient badges and bold numbers
-              ctx.shadowColor = 'rgba(0,0,0,0.6)';
-              ctx.shadowBlur = 16;
+              var curY = centerY - (180 * s);
 
               // Top Pill Badge
               if (config.showBranding) {
-                var grad = ctx.createLinearGradient(centerX - 180, 0, centerX + 180, 0);
+                var pillW = 320 * s;
+                var pillH = 64 * s;
+                var pillX = centerX - pillW / 2;
+                var pillY = curY;
+
+                var grad = ctx.createLinearGradient(pillX, 0, pillX + pillW, 0);
                 grad.addColorStop(0, '#FC5200');
                 grad.addColorStop(1, '#FF7A00');
                 ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.roundRect(centerX - 150, centerY - 320, 300, 64, 32);
+                roundRect(pillX, pillY, pillW, pillH, pillH / 2);
                 ctx.fill();
 
-                ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.font = '800 ' + Math.round(24 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillText('FASTING ACTIVE', centerX, centerY - 288);
+                ctx.fillText('FASTING ACTIVE', centerX, pillY + pillH / 2);
+                curY += (100 * s);
               }
 
               // Giant Duration
-              ctx.font = 'bold 220px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.font = '900 ' + Math.round(180 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#FFFFFF';
-              ctx.fillText(hours + ':' + durMinsStr, centerX, centerY - 60);
+              ctx.shadowColor = 'rgba(0,0,0,0.5)';
+              ctx.shadowBlur = 16;
+              ctx.fillText(durFormatted, centerX, curY + (75 * s));
+              curY += (175 * s);
 
-              ctx.font = '700 36px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              // Subtitle
+              ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#FC5200';
-              ctx.fillText('BERHASIL BERPUASA', centerX, centerY + 80);
+              ctx.shadowBlur = 0;
+              ctx.fillText('BERHASIL BERPUASA', centerX, curY);
+              curY += (55 * s);
 
-              // Secondary metrics grid pill
-              var cardW = 680;
-              var cardH = 130;
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+              // Secondary Metrics Card
+              var cardW = 640 * s;
+              var cardH = 130 * s;
+              var cardX = centerX - cardW / 2;
+              var cardY = curY;
+
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+              roundRect(cardX, cardY, cardW, cardH, 24 * s);
+              ctx.fill();
               ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
               ctx.lineWidth = 1.5;
-              ctx.beginPath();
-              ctx.roundRect(centerX - cardW/2, centerY + 140, cardW, cardH, 24);
-              ctx.fill();
               ctx.stroke();
 
-              ctx.textAlign = 'left';
-              var cLeft = centerX - cardW/2 + 40;
-              var cMid = centerX + 40;
+              // Two columns inside card
+              var col1X = cardX + (cardW * 0.28);
+              var col2X = cardX + (cardW * 0.72);
 
               if (config.showTarget) {
-                ctx.font = '400 20px -apple-system, sans-serif';
-                ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.fillText('POLA PUASA', cLeft, centerY + 180);
-                ctx.font = 'bold 32px -apple-system, sans-serif';
+                ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.fillText('POLA', col1X, cardY + (38 * s));
+                ctx.font = '800 ' + Math.round(32 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(session.planLabel || '16:8', cLeft, centerY + 225);
+                ctx.fillText(planLabel, col1X, cardY + (82 * s));
               }
 
               if (config.showTimes) {
-                ctx.font = '400 20px -apple-system, sans-serif';
-                ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.fillText('WAKTU', cMid, centerY + 180);
-                ctx.font = 'bold 32px -apple-system, sans-serif';
+                ctx.font = '600 ' + Math.round(18 * s) + 'px ' + sansFont;
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.fillText('WAKTU', col2X, cardY + (38 * s));
+                ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(startStr + ' - ' + endStr, cMid, centerY + 225);
+                ctx.fillText(startStr + ' – ' + endStr, col2X, cardY + (82 * s));
               }
 
+              curY += cardH + (40 * s);
+
               if (config.showDate) {
-                ctx.textAlign = 'center';
-                ctx.font = '500 24px -apple-system, sans-serif';
+                ctx.font = '500 ' + Math.round(24 * s) + 'px ' + sansFont;
                 ctx.fillStyle = 'rgba(255,255,255,0.85)';
-                ctx.fillText(dateStr, centerX, centerY + 320);
+                ctx.fillText(dateStr, centerX, curY);
               }
 
             } else if (template === 'GLASS_STYLE') {
-              // Glass Style: Modern translucent frosted card
-              var glassW = Math.min(W - 140, 780);
-              var glassH = isStory ? 680 : 560;
-              var glassX = centerX - glassW / 2;
-              var glassY = centerY - glassH / 2;
+              var cardW = 720 * s;
+              var cardH = 480 * s;
+              var cardX = centerX - cardW / 2;
+              var cardY = centerY - cardH / 2;
 
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-              ctx.lineWidth = 2;
-              ctx.beginPath();
-              ctx.roundRect(glassX, glassY, glassW, glassH, 44);
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+              roundRect(cardX, cardY, cardW, cardH, 40 * s);
               ctx.fill();
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+              ctx.lineWidth = 2.5;
               ctx.stroke();
 
+              var innerY = cardY + (60 * s);
               if (config.showBranding) {
-                ctx.font = '700 26px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.font = '700 ' + Math.round(26 * s) + 'px ' + sansFont;
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillText('HEULA FASTING', centerX, glassY + 65);
+                ctx.fillText('H E U L A   F A S T I N G', centerX, innerY);
+                innerY += (85 * s);
               }
 
-              ctx.font = 'bold 170px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              ctx.font = '900 ' + Math.round(135 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#FFFFFF';
-              ctx.fillText(hours + 'j ' + durMinsStr + 'm', centerX, glassY + 220);
+              ctx.shadowColor = 'rgba(0,0,0,0.3)';
+              ctx.shadowBlur = 10;
+              ctx.fillText(hours + 'j ' + durMinsStr + 'm', centerX, innerY);
+              innerY += (105 * s);
 
-              ctx.font = '600 28px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-              ctx.fillText('Target ' + (session.planLabel || '16:8') + ' Tuntas', centerX, glassY + 330);
-
-              if (config.showTimes) {
-                ctx.font = '400 24px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.fillText(startStr + ' — ' + endStr, centerX, glassY + 390);
+              ctx.shadowBlur = 0;
+              if (config.showTarget) {
+                ctx.font = '600 ' + Math.round(28 * s) + 'px ' + sansFont;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillText('Target ' + planLabel + ' Tuntas', centerX, innerY);
+                innerY += (55 * s);
               }
-
+              if (config.showTimes) {
+                ctx.font = '400 ' + Math.round(25 * s) + 'px ' + sansFont;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+                ctx.fillText(startStr + ' — ' + endStr, centerX, innerY);
+                innerY += (45 * s);
+              }
               if (config.showDate) {
-                ctx.font = '400 22px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                ctx.fillText(dateStr, centerX, glassY + 450);
+                ctx.fillText(dateStr, centerX, innerY);
               }
 
             } else if (template === 'TYPOGRAPHY') {
-              // Typography: Bold Swiss Editorial Poster style
-              ctx.shadowColor = 'rgba(0,0,0,0.5)';
-              ctx.shadowBlur = 10;
+              var startX = centerX - (360 * s);
+              var curY = centerY - (160 * s);
               ctx.textAlign = 'left';
 
-              var marginX = W * 0.12;
-              var curY = centerY - 180;
-
               if (config.showBranding) {
-                ctx.font = '800 36px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.font = '900 ' + Math.round(30 * s) + 'px ' + sansFont;
                 ctx.fillStyle = mainColor;
-                ctx.fillText('FASTING RECORD', marginX, curY);
-                curY += 80;
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 8;
+                ctx.fillText('FASTING RECORD', startX, curY);
+                curY += (70 * s);
               }
 
-              ctx.font = '900 260px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+              // Big number
+              var numFont = '900 ' + Math.round(210 * s) + 'px ' + sansFont;
+              ctx.font = numFont;
               ctx.fillStyle = mainColor;
-              ctx.fillText(durHoursStr, marginX, curY + 120);
+              var numText = String(hours);
+              ctx.fillText(numText, startX, curY + (85 * s));
 
-              ctx.font = '800 64px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
-              ctx.fillStyle = mainColor;
-              ctx.fillText('HOURS', marginX + 340, curY + 40);
-              ctx.fillText(durMinsStr + ' MIN', marginX + 340, curY + 115);
+              // Measure width of the big number to place JAM and MIN precisely
+              var numWidth = ctx.measureText(numText).width;
+              var labelX = startX + numWidth + (20 * s);
 
-              curY += 250;
+              ctx.font = '800 ' + Math.round(48 * s) + 'px ' + sansFont;
+              ctx.fillText('JAM', labelX, curY + (45 * s));
+              ctx.fillText(durMinsStr + ' MNT', labelX, curY + (115 * s));
+              curY += (210 * s);
 
+              ctx.shadowBlur = 0;
               if (config.showTarget || config.showTimes) {
-                ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.font = '700 ' + Math.round(30 * s) + 'px ' + sansFont;
                 ctx.fillStyle = mainColor;
-                ctx.fillText((session.planLabel || '16:8') + ' • ' + startStr + ' — ' + endStr, marginX, curY);
-                curY += 50;
+                ctx.fillText(planLabel + ' • ' + startStr + ' — ' + endStr, startX, curY);
+                curY += (50 * s);
               }
-
               if (config.showDate) {
-                ctx.font = '400 26px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+                ctx.font = '500 ' + Math.round(24 * s) + 'px ' + sansFont;
                 ctx.fillStyle = mainColor;
-                ctx.fillText(dateStr, marginX, curY);
+                ctx.globalAlpha = 0.75;
+                ctx.fillText(dateStr, startX, curY);
+                ctx.globalAlpha = 1.0;
               }
 
             } else if (template === 'EDITORIAL') {
-              // Editorial: Health Magazine aesthetic with refined letterspacing
-              ctx.shadowColor = 'rgba(0,0,0,0.5)';
-              ctx.shadowBlur = 8;
+              var curY = centerY - (140 * s);
 
               if (config.showBranding) {
-                ctx.font = '400 28px "Georgia", serif';
+                ctx.font = '400 ' + Math.round(28 * s) + 'px ' + serifFont;
                 ctx.fillStyle = mainColor;
-                ctx.fillText('— HEULA JOURNAL —', centerX, centerY - 240);
+                ctx.fillText('— HEULA JOURNAL —', centerX, curY);
+                curY += (80 * s);
               }
 
-              ctx.font = '300 160px "Georgia", serif';
+              ctx.font = '300 ' + Math.round(145 * s) + 'px ' + serifFont;
               ctx.fillStyle = mainColor;
-              ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, centerY - 60);
+              ctx.shadowColor = 'rgba(0,0,0,0.35)';
+              ctx.shadowBlur = 10;
+              ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, curY + (60 * s));
+              curY += (150 * s);
 
-              ctx.font = 'italic 32px "Georgia", serif';
+              ctx.shadowBlur = 0;
+              ctx.font = 'italic ' + Math.round(30 * s) + 'px ' + serifFont;
               ctx.fillStyle = mainColor;
-              ctx.fillText('Intermittent Fasting Completed', centerX, centerY + 60);
+              ctx.fillText('Intermittent Fasting Completed', centerX, curY);
+              curY += (45 * s);
 
-              ctx.strokeStyle = mainColor;
-              ctx.lineWidth = 1;
-              ctx.beginPath();
-              ctx.moveTo(centerX - 120, centerY + 110);
-              ctx.lineTo(centerX + 120, centerY + 110);
-              ctx.stroke();
+              // Thin line
+              ctx.fillStyle = mainColor;
+              ctx.fillRect(centerX - (60 * s), curY, 120 * s, 2 * s);
+              curY += (40 * s);
 
-              var eY = centerY + 170;
               if (config.showTarget) {
-                ctx.font = '400 24px -apple-system, sans-serif';
-                ctx.fillText('Target: ' + (session.planLabel || '16:8'), centerX, eY);
-                eY += 45;
+                ctx.font = '400 ' + Math.round(26 * s) + 'px ' + sansFont;
+                ctx.fillStyle = mainColor;
+                ctx.fillText('Target: ' + planLabel, centerX, curY);
+                curY += (45 * s);
               }
               if (config.showDate) {
-                ctx.font = '400 22px -apple-system, sans-serif';
-                ctx.fillText(dateStr, centerX, eY);
+                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
+                ctx.fillStyle = mainColor;
+                ctx.globalAlpha = 0.7;
+                ctx.fillText(dateStr, centerX, curY);
+                ctx.globalAlpha = 1.0;
               }
 
             } else if (template === 'NEON') {
-              // Neon: Cyberpunk athletic neon lime (#CCFF00) and electric cyan
-              ctx.shadowColor = '#CCFF00';
-              ctx.shadowBlur = 24;
+              var curY = centerY - (150 * s);
 
               if (config.showBranding) {
-                ctx.font = '900 32px -apple-system, sans-serif';
+                ctx.font = '900 ' + Math.round(28 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#CCFF00';
-                ctx.fillText('// HEULA.PRO', centerX, centerY - 280);
+                ctx.shadowColor = '#CCFF00';
+                ctx.shadowBlur = 14;
+                ctx.fillText('// HEULA.PRO', centerX, curY);
+                curY += (75 * s);
               }
 
-              ctx.font = '900 210px -apple-system, sans-serif';
+              ctx.font = '900 ' + Math.round(175 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#FFFFFF';
-              ctx.fillText(hours + ':' + durMinsStr, centerX, centerY - 60);
+              ctx.shadowColor = '#CCFF00';
+              ctx.shadowBlur = 20;
+              ctx.fillText(durFormatted, centerX, curY + (75 * s));
+              curY += (175 * s);
 
-              ctx.shadowBlur = 18;
-              ctx.font = '800 36px -apple-system, sans-serif';
+              ctx.font = '800 ' + Math.round(30 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#CCFF00';
-              ctx.fillText('FASTING GOAL UNLOCKED', centerX, centerY + 80);
+              ctx.shadowBlur = 10;
+              ctx.fillText('FASTING GOAL UNLOCKED', centerX, curY);
+              curY += (55 * s);
 
-              var nY = centerY + 160;
+              ctx.shadowBlur = 0;
               if (config.showTarget) {
-                ctx.font = '700 28px -apple-system, sans-serif';
+                ctx.font = '800 ' + Math.round(28 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#00F0FF';
-                ctx.fillText('TARGET ' + (session.planLabel || '16:8'), centerX, nY);
-                nY += 50;
+                ctx.fillText('TARGET ' + planLabel, centerX, curY);
+                curY += (48 * s);
               }
               if (config.showTimes) {
-                ctx.font = '500 24px -apple-system, sans-serif';
+                ctx.font = '500 ' + Math.round(25 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(startStr + ' — ' + endStr, centerX, nY);
-                nY += 45;
+                ctx.fillText(startStr + ' — ' + endStr, centerX, curY);
+                curY += (42 * s);
               }
               if (config.showDate) {
-                ctx.font = '400 22px -apple-system, sans-serif';
+                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
                 ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.fillText(dateStr, centerX, nY);
+                ctx.fillText(dateStr, centerX, curY);
               }
 
             } else if (template === 'DARK_MODE') {
-              // Dark Mode: Solid black high contrast elements for bright background photos
-              var cardW = Math.min(W - 120, 760);
-              var cardH = isStory ? 560 : 480;
+              var cardW = 720 * s;
+              var cardH = 480 * s;
+              var cardX = centerX - cardW / 2;
+              var cardY = centerY - cardH / 2;
 
-              ctx.fillStyle = 'rgba(20, 20, 22, 0.88)';
-              ctx.beginPath();
-              ctx.roundRect(centerX - cardW/2, centerY - cardH/2, cardW, cardH, 36);
+              ctx.fillStyle = 'rgba(18, 18, 20, 0.90)';
+              roundRect(cardX, cardY, cardW, cardH, 40 * s);
               ctx.fill();
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+              ctx.lineWidth = 2;
+              ctx.stroke();
 
+              var innerY = cardY + (60 * s);
               if (config.showBranding) {
-                ctx.font = '700 24px -apple-system, sans-serif';
+                ctx.font = '800 ' + Math.round(24 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#FC5200';
-                ctx.fillText('HEULA ACTIVITY', centerX, centerY - cardH/2 + 65);
+                ctx.fillText('HEULA ACTIVITY', centerX, innerY);
+                innerY += (85 * s);
               }
 
-              ctx.font = 'bold 150px -apple-system, sans-serif';
+              ctx.font = '900 ' + Math.round(135 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#FFFFFF';
-              ctx.fillText(hours + 'h ' + durMinsStr + 'm', centerX, centerY - cardH/2 + 200);
+              ctx.fillText(hours + 'j ' + durMinsStr + 'm', centerX, innerY);
+              innerY += (95 * s);
 
-              ctx.font = '600 28px -apple-system, sans-serif';
+              ctx.font = '700 ' + Math.round(30 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#34C759';
-              ctx.fillText('Target ' + (session.planLabel || '16:8') + ' Selesai', centerX, centerY - cardH/2 + 300);
+              ctx.fillText('Target ' + planLabel + ' Selesai', centerX, innerY);
+              innerY += (60 * s);
 
               if (config.showTimes) {
-                ctx.font = '400 24px -apple-system, sans-serif';
+                ctx.font = '400 ' + Math.round(26 * s) + 'px ' + sansFont;
                 ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.fillText(startStr + ' — ' + endStr, centerX, centerY - cardH/2 + 360);
+                ctx.fillText(startStr + ' — ' + endStr, centerX, innerY);
+                innerY += (45 * s);
               }
-
               if (config.showDate) {
-                ctx.font = '400 22px -apple-system, sans-serif';
+                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
                 ctx.fillStyle = 'rgba(255,255,255,0.5)';
-                ctx.fillText(dateStr, centerX, centerY - cardH/2 + 420);
+                ctx.fillText(dateStr, centerX, innerY);
               }
 
             } else {
               // CLEAN_WHITE: Pure white text with soft shadow for universal readability
-              ctx.shadowColor = 'rgba(0,0,0,0.65)';
-              ctx.shadowBlur = 20;
+              var curY = centerY - (120 * s);
 
               if (config.showBranding) {
-                ctx.font = '700 30px -apple-system, sans-serif';
+                ctx.font = '700 ' + Math.round(28 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillText('HEULA', centerX, centerY - 260);
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 10;
+                ctx.fillText('H  E  U  L  A', centerX, curY);
+                curY += (70 * s);
               }
 
-              ctx.font = 'bold 200px -apple-system, sans-serif';
+              ctx.font = '900 ' + Math.round(175 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#FFFFFF';
-              ctx.fillText(hours + ':' + durMinsStr, centerX, centerY - 60);
+              ctx.shadowColor = 'rgba(0,0,0,0.55)';
+              ctx.shadowBlur = 14;
+              ctx.fillText(durFormatted, centerX, curY + (75 * s));
+              curY += (175 * s);
 
-              ctx.font = '600 32px -apple-system, sans-serif';
+              ctx.font = '700 ' + Math.round(28 * s) + 'px ' + sansFont;
               ctx.fillStyle = '#FFFFFF';
-              ctx.fillText('TARGET ' + (session.planLabel || '16:8') + ' COMPLETED', centerX, centerY + 80);
+              ctx.shadowBlur = 8;
+              ctx.fillText('TARGET ' + planLabel + ' COMPLETED', centerX, curY);
+              curY += (55 * s);
 
-              var wY = centerY + 160;
+              ctx.shadowBlur = 6;
               if (config.showTimes) {
-                ctx.font = '400 26px -apple-system, sans-serif';
+                ctx.font = '400 ' + Math.round(26 * s) + 'px ' + sansFont;
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(startStr + ' — ' + endStr, centerX, wY);
-                wY += 50;
+                ctx.fillText(startStr + ' — ' + endStr, centerX, curY);
+                curY += (45 * s);
               }
               if (config.showDate) {
-                ctx.font = '400 24px -apple-system, sans-serif';
+                ctx.font = '400 ' + Math.round(23 * s) + 'px ' + sansFont;
                 ctx.fillStyle = 'rgba(255,255,255,0.85)';
-                ctx.fillText(dateStr, centerX, wY);
+                ctx.fillText(dateStr, centerX, curY);
               }
             }
 
