@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.heula.domain.model.FastingSession
 import id.heula.domain.model.Mood
+import id.heula.presentation.component.icon.getMoodVisual
 import id.heula.presentation.component.ui.ConfirmDialog
 import id.heula.presentation.component.ui.HeulaBadge
 import id.heula.presentation.component.ui.HeulaCard
@@ -187,17 +188,30 @@ private fun SessionItemCard(
             Spacer(modifier = Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (session.mood != null) {
-                    Text(
-                        text = when (session.mood) {
-                            Mood.ENERGIK -> "⚡ Energik"
-                            Mood.BIASA -> "🙂 Biasa"
-                            Mood.LEMES -> "🥱 Lemas"
-                            Mood.LAPAR -> "🤤 Lapar"
-                        },
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    val moodVisual = getMoodVisual(session.mood)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = moodVisual.color.copy(alpha = 0.12f),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                        ) {
+                            Icon(
+                                imageVector = moodVisual.icon,
+                                contentDescription = moodVisual.label,
+                                tint = moodVisual.color,
+                                modifier = Modifier.size(13.dp),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = moodVisual.label,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = moodVisual.color,
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
                 if (!session.note.isNullOrBlank()) {
@@ -248,29 +262,42 @@ private fun EditMoodNoteDialog(
                 Text("Bagaimana perasaanmu selama puasa?", fontSize = 13.sp)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Mood.entries.forEach { mood ->
+                        val visual = getMoodVisual(mood)
                         val isSelected = selectedMood == mood
-                        Button(
+                        Surface(
                             onClick = { selectedMood = mood },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) BrandPrimary else MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                            ),
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) BrandPrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, BrandPrimary) else null,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
                         ) {
-                            Text(
-                                text = when (mood) {
-                                    Mood.ENERGIK -> "⚡"
-                                    Mood.BIASA -> "🙂"
-                                    Mood.LEMES -> "🥱"
-                                    Mood.LAPAR -> "🤤"
-                                },
-                                fontSize = 16.sp,
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 2.dp, vertical = 6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = visual.icon,
+                                    contentDescription = visual.label,
+                                    tint = if (isSelected) BrandPrimary else visual.color,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = visual.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) BrandPrimary else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                )
+                            }
                         }
                     }
                 }

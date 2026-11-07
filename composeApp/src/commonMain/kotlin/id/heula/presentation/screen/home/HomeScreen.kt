@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.heula.domain.model.*
 import id.heula.presentation.component.icon.HeulaIcons
+import id.heula.presentation.component.icon.getMoodVisual
 import id.heula.presentation.component.timer.ProgressRing
 import id.heula.presentation.component.timer.StageIndicator
 import id.heula.presentation.component.ui.ButtonVariant
@@ -975,26 +976,42 @@ private fun FinishFastModal(
                 Text("Bagaimana energimu saat ini?", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf(
-                        Mood.ENERGIK to "⚡ Energik",
-                        Mood.BIASA to "🙂 Biasa",
-                        Mood.LEMES to "🥱 Lemas",
-                        Mood.LAPAR to "🤤 Lapar",
-                    ).forEach { (mood, label) ->
+                    Mood.entries.forEach { mood ->
+                        val visual = getMoodVisual(mood)
                         val isSelected = selectedMood == mood
-                        Button(
+                        Surface(
                             onClick = { selectedMood = if (isSelected) null else mood },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) BrandPrimary else MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                            ),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) BrandPrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, BrandPrimary) else null,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
                         ) {
-                            Text(label.split(" ")[0], fontSize = 15.sp)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 2.dp, vertical = 6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = visual.icon,
+                                    contentDescription = visual.label,
+                                    tint = if (isSelected) BrandPrimary else visual.color,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = visual.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) BrandPrimary else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                )
+                            }
                         }
                     }
                 }
