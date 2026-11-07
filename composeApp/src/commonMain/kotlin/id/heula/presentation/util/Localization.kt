@@ -86,6 +86,16 @@ data class Strings(
     val resetDataTitle: String,
     val resetDataDesc: String,
     val resetDataButton: String,
+    // Cloud Sync & Google Auth
+    val cloudSyncSectionTitle: String,
+    val cloudSyncDesc: String,
+    val signInWithGoogle: String,
+    val signOut: String,
+    val syncStatusSynced: String,
+    val syncStatusSyncing: String,
+    val syncStatusFailed: String,
+    val syncNowButton: String,
+    val lastSyncedJustNow: String,
 )
 
 val IndonesianStrings = Strings(
@@ -165,6 +175,16 @@ val IndonesianStrings = Strings(
     resetDataTitle = "Mulai Ulang dari Nol",
     resetDataDesc = "Hapus semua catatan puasa dan profil, kembali kayak baru download.",
     resetDataButton = "Reset Semua Data",
+    // Cloud Sync & Google Auth
+    cloudSyncSectionTitle = "Akun & Cloud Sync",
+    cloudSyncDesc = "Simpan progres puasa, riwayat, dan targetmu biar aman dan bisa dibuka di perangkat mana aja.",
+    signInWithGoogle = "Masuk dengan Google",
+    signOut = "Keluar dari Akun",
+    syncStatusSynced = "Tersinkronisasi ke Cloud",
+    syncStatusSyncing = "Lagi menyinkronkan data...",
+    syncStatusFailed = "Gagal sinkronisasi data",
+    syncNowButton = "Sinkronkan Sekarang",
+    lastSyncedJustNow = "Terakhir disinkronkan: Baru saja",
 )
 
 val EnglishStrings = Strings(
@@ -244,6 +264,16 @@ val EnglishStrings = Strings(
     resetDataTitle = "Fresh Start (Reset All)",
     resetDataDesc = "Delete all fasting records and profile, starting fresh like day one.",
     resetDataButton = "Reset Everything",
+    // Cloud Sync & Google Auth
+    cloudSyncSectionTitle = "Account & Cloud Sync",
+    cloudSyncDesc = "Save your fasting progress, history, and goals safely and access them across all your devices.",
+    signInWithGoogle = "Sign in with Google",
+    signOut = "Sign Out",
+    syncStatusSynced = "Synced to Cloud",
+    syncStatusSyncing = "Syncing data...",
+    syncStatusFailed = "Sync failed",
+    syncNowButton = "Sync Now",
+    lastSyncedJustNow = "Last synced: Just now",
 )
 
 fun getStrings(language: AppLanguage): Strings = when (language) {

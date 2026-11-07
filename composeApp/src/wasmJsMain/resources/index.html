@@ -15,6 +15,71 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
     </style>
+    <!-- Google Identity Services (GIS) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      window.heulaGoogleAuth = {
+        clientId: '60875023761-qgh2fpt5q2a2ohbup77trk36s2tog0ic.apps.googleusercontent.com',
+        tokenClient: null,
+        init: function() {
+          if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+            this.tokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: this.clientId,
+              scope: 'email profile openid',
+              callback: (tokenResponse) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                  fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { 'Authorization': 'Bearer ' + tokenResponse.access_token }
+                  })
+                  .then(function(res) { return res.json(); })
+                  .then(function(data) {
+                    var result = JSON.stringify({
+                      uid: data.sub || '',
+                      email: data.email || '',
+                      displayName: data.name || '',
+                      photoUrl: data.picture || ''
+                    });
+                    window.localStorage.setItem('heula_google_auth_result', result);
+                  })
+                  .catch(function(err) {
+                    console.error('Failed to fetch Google userinfo:', err);
+                  });
+                } else if (tokenResponse && tokenResponse.error) {
+                  console.error('Google token error:', tokenResponse.error);
+                }
+              }
+            });
+          }
+        },
+        signIn: function() {
+          try {
+            if (!this.tokenClient) {
+              this.init();
+            }
+            if (this.tokenClient) {
+              this.tokenClient.requestAccessToken({ prompt: 'consent' });
+            } else {
+              var self = this;
+              setTimeout(function() {
+                self.init();
+                if (self.tokenClient) {
+                  self.tokenClient.requestAccessToken({ prompt: 'consent' });
+                } else {
+                  console.warn('Google Identity Services SDK is still loading or blocked by browser/extension.');
+                }
+              }, 400);
+            }
+          } catch (e) {
+            console.error('Google Sign-In trigger error:', e);
+          }
+        },
+        signOut: function() {
+          try {
+            window.localStorage.removeItem('heula_google_auth_result');
+          } catch (e) {}
+        }
+      };
+    </script>
 </head>
 <body>
     <script src="composeApp.js"></script>

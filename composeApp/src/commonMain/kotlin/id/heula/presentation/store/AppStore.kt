@@ -4,6 +4,7 @@ import id.heula.data.repository.SessionRepository
 import id.heula.data.repository.SettingsRepository
 import id.heula.data.repository.WeightRepository
 import id.heula.domain.model.*
+import id.heula.domain.repository.AuthRepository
 import id.heula.domain.usecase.AppSettings
 import id.heula.domain.usecase.toActiveFast
 import id.heula.domain.usecase.toSerializable
@@ -16,10 +17,14 @@ class AppStore(
     private val settingsRepository: SettingsRepository,
     private val sessionRepository: SessionRepository,
     private val weightRepository: WeightRepository,
+    private val authRepository: AuthRepository,
     private val scope: CoroutineScope,
 ) {
     private val _settings = MutableStateFlow(AppSettings())
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
+
+    val currentUser: StateFlow<UserAccount?> = authRepository.currentUser
+    val syncState: StateFlow<SyncState> = authRepository.syncState
 
     val activeFast: StateFlow<ActiveFast?> = settings
         .map { it.activeFast?.toActiveFast() }
@@ -30,6 +35,27 @@ class AppStore(
 
     val weights = weightRepository.observeAll()
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    fun signInWithGoogle(onResult: (Result<UserAccount>) -> Unit = {}) {
+        scope.launch {
+            val res = authRepository.signInWithGoogle()
+            onResult(res)
+        }
+    }
+
+    fun signOut(onResult: (Result<Unit>) -> Unit = {}) {
+        scope.launch {
+            val res = authRepository.signOut()
+            onResult(res)
+        }
+    }
+
+    fun syncAllData(onResult: (Result<Unit>) -> Unit = {}) {
+        scope.launch {
+            val res = authRepository.syncAllData()
+            onResult(res)
+        }
+    }
 
     init {
         scope.launch {
