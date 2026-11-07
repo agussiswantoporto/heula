@@ -542,6 +542,16 @@
           }
         },
 
+        dataUrlToBlob: function(dataUrl) {
+          var parts = dataUrl.split(',');
+          var byteString = atob(parts[1]);
+          var ia = new Uint8Array(byteString.length);
+          for (var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+          }
+          return new Blob([ia], { type: 'image/png' });
+        },
+
         exportImage: function(sessionJson, configJson) {
           try {
             var session = JSON.parse(sessionJson || '{}');
@@ -555,106 +565,65 @@
             var mins = totalMin % 60;
             var durFormatted = hours + ' JAM ' + mins + ' MENIT';
 
-            // Export to Transparent PNG
-            canvas.toBlob(function(blob) {
-              if (!blob) {
-                window.localStorage.setItem('heula_share_export_status', 'ERR:Gagal membuat blob gambar');
-                return;
+            var dataUrl = canvas.toDataURL('image/png');
+            var blob = window.heulaShareImage.dataUrlToBlob(dataUrl);
+            var fileName = 'heula-fast-' + Date.now() + '.png';
+
+            var file = null;
+            try {
+              file = new File([blob], fileName, { type: 'image/png' });
+            } catch (e) {
+              file = null;
+            }
+
+            var canShare = false;
+            try {
+              if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                canShare = true;
               }
+            } catch (e) {
+              canShare = false;
+            }
 
-              var fileName = 'heula-fast-' + Date.now() + '.png';
-              var file = new File([blob], fileName, { type: 'image/png' });
-
-              // Web Share API on Mobile (iOS / Android)
-              if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({
-                  files: [file],
-                  title: 'Jejak Puasa Heula',
-                  text: 'Saya baru saja menyelesaikan puasa ' + durFormatted + ' dengan Heula!'
-                })
-                .then(function() {
-                  window.localStorage.setItem('heula_share_export_status', 'OK');
-                })
-                .catch(function(err) {
-                  if (err.name !== 'AbortError') {
-                    window.heulaShareImage.triggerDownload(blob, fileName);
-                  }
-                  window.localStorage.setItem('heula_share_export_status', 'OK');
-                });
-              } else {
-                window.heulaShareImage.triggerDownload(blob, fileName);
+            if (canShare && navigator.share) {
+              navigator.share({
+                files: [file],
+                title: 'Jejak Puasa Heula',
+                text: 'Saya baru saja menyelesaikan puasa ' + durFormatted + ' dengan Heula!'
+              })
+              .then(function() {
                 window.localStorage.setItem('heula_share_export_status', 'OK');
-              }
-            }, 'image/png');
-
+              })
+              .catch(function(err) {
+                if (err && err.name !== 'AbortError') {
+                  window.heulaShareImage.triggerDownload(blob, fileName);
+                }
+                window.localStorage.setItem('heula_share_export_status', 'OK');
+              });
+            } else {
+              window.heulaShareImage.triggerDownload(blob, fileName);
+              window.localStorage.setItem('heula_share_export_status', 'OK');
+            }
           } catch (e) {
             console.error('Share export error:', e);
-            window.localStorage.setItem('heula_share_export_status', 'ERR:' + e.message);
+            window.localStorage.setItem('heula_share_export_status', 'ERR:' + (e.message || 'Gagal ekspor'));
           }
         },
 
         triggerDownload: function(blob, fileName) {
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
-        }
-      };
-
-            // Export to Transparent PNG
-            canvas.toBlob(function(blob) {
-              if (!blob) {
-                window.localStorage.setItem('heula_share_export_status', 'ERR:Gagal membuat blob gambar');
-                return;
-              }
-
-              var fileName = 'heula-fast-' + Date.now() + '.png';
-              var file = new File([blob], fileName, { type: 'image/png' });
-
-              // Web Share API on Mobile (iOS / Android)
-              if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({
-                  files: [file],
-                  title: 'Jejak Puasa Heula',
-                  text: 'Saya baru saja menyelesaikan puasa ' + durFormatted + ' dengan Heula!'
-                })
-                .then(function() {
-                  window.localStorage.setItem('heula_share_export_status', 'OK');
-                })
-                .catch(function(err) {
-                  // User cancelled share or failed
-                  if (err.name !== 'AbortError') {
-                    // Fallback to download
-                    window.heulaShareImage.triggerDownload(blob, fileName);
-                  }
-                  window.localStorage.setItem('heula_share_export_status', 'OK');
-                });
-              } else {
-                // Direct download fallback
-                window.heulaShareImage.triggerDownload(blob, fileName);
-                window.localStorage.setItem('heula_share_export_status', 'OK');
-              }
-            }, 'image/png');
-
+          try {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
           } catch (e) {
-            console.error('Share export error:', e);
-            window.localStorage.setItem('heula_share_export_status', 'ERR:' + e.message);
+            console.error('triggerDownload error:', e);
           }
-        },
-
-        triggerDownload: function(blob, fileName) {
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
         }
       };
     </script>

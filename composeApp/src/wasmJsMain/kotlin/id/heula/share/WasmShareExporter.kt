@@ -14,7 +14,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.jetbrains.skia.Image
 
-@JsFun("(sessionJson, configJson) => { window.localStorage.removeItem('heula_share_export_status'); if (window.heulaShareImage) { window.heulaShareImage.exportImage(sessionJson, configJson); } }")
+@JsFun("(sessionJson, configJson) => { window.localStorage.removeItem('heula_share_export_status'); if (window.heulaShareImage && window.heulaShareImage.exportImage) { window.heulaShareImage.exportImage(sessionJson, configJson); } else { window.localStorage.setItem('heula_share_export_status', 'ERR:Fitur share gambar belum siap'); } }")
 external fun jsExportShareImage(sessionJson: String, configJson: String)
 
 @JsFun("() => { return window.localStorage.getItem('heula_share_export_status') || ''; }")
