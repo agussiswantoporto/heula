@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UserCloudData(
+    val user: UserAccount? = null,
     val lastSyncedAt: Long = 0L,
     val sessions: List<FastingSession> = emptyList(),
     val weights: List<WeightRecord> = emptyList(),

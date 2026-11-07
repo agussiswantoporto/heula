@@ -4,6 +4,7 @@ import id.heula.data.repository.SessionRepository
 import id.heula.data.repository.SettingsRepository
 import id.heula.data.repository.WeightRepository
 import id.heula.domain.model.FastingSession
+import id.heula.domain.model.UserAccount
 import id.heula.domain.model.UserCloudData
 import id.heula.domain.model.WeightRecord
 import id.heula.domain.repository.CloudSyncService
@@ -16,12 +17,12 @@ class SyncManager(
     private val settingsRepository: SettingsRepository,
     private val cloudSyncService: CloudSyncService,
 ) {
-    suspend fun sync(uid: String): Result<Long> {
+    suspend fun sync(user: UserAccount): Result<Long> {
         return try {
             val now = Clock.System.now().toEpochMilliseconds()
 
             // 1. Download existing data from cloud
-            val cloudDataResult = cloudSyncService.downloadUserData(uid)
+            val cloudDataResult = cloudSyncService.downloadUserData(user.uid)
             val cloudData = cloudDataResult.getOrNull()
 
             // 2. Fetch current local data
@@ -51,14 +52,15 @@ class SyncManager(
             }
             settingsRepository.save(mergedSettings)
 
-            // 6. Upload merged data to Cloud
+            // 6. Upload merged data with user info to Cloud
             val payload = UserCloudData(
+                user = user,
                 lastSyncedAt = now,
                 sessions = mergedSessions,
                 weights = mergedWeights,
                 settings = mergedSettings,
             )
-            val uploadRes = cloudSyncService.uploadUserData(uid, payload)
+            val uploadRes = cloudSyncService.uploadUserData(user, payload)
             if (uploadRes.isSuccess) {
                 Result.success(now)
             } else {

@@ -1,5 +1,6 @@
 package id.heula.sync
 
+import id.heula.domain.model.UserAccount
 import id.heula.domain.model.UserCloudData
 import id.heula.domain.repository.CloudSyncService
 import kotlinx.coroutines.Dispatchers
@@ -15,11 +16,19 @@ class AndroidCloudSyncService : CloudSyncService {
     private val projectId = "heula-514007"
     private val json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun uploadUserData(uid: String, data: UserCloudData): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun uploadUserData(user: UserAccount, data: UserCloudData): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val url = URL("https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/users/$uid?updateMask.fieldPaths=payload&updateMask.fieldPaths=updatedAt")
+            val url = URL("https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/users/${user.uid}?updateMask.fieldPaths=payload&updateMask.fieldPaths=updatedAt&updateMask.fieldPaths=email&updateMask.fieldPaths=displayName&updateMask.fieldPaths=photoUrl")
             val serialized = json.encodeToString(data)
-            val body = """{"fields":{"payload":{"stringValue":${json.encodeToString(serialized)}},"updatedAt":{"integerValue":"${System.currentTimeMillis()}"}}}"""
+            val body = """{
+                "fields": {
+                    "email": {"stringValue": ${json.encodeToString(user.email)}},
+                    "displayName": {"stringValue": ${json.encodeToString(user.displayName ?: "")}},
+                    "photoUrl": {"stringValue": ${json.encodeToString(user.photoUrl ?: "")}},
+                    "payload": {"stringValue": ${json.encodeToString(serialized)}},
+                    "updatedAt": {"integerValue": "${System.currentTimeMillis()}"}
+                }
+            }""".trimIndent()
 
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"

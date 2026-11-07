@@ -82,13 +82,16 @@
 
       window.heulaFirestore = {
         projectId: 'heula-514007',
-        upload: function(uid, jsonStr) {
-          var url = 'https://firestore.googleapis.com/v1/projects/' + this.projectId + '/databases/(default)/documents/users/' + uid + '?updateMask.fieldPaths=payload&updateMask.fieldPaths=updatedAt';
+        upload: function(uid, email, displayName, photoUrl, jsonStr) {
+          var url = 'https://firestore.googleapis.com/v1/projects/' + this.projectId + '/databases/(default)/documents/users/' + uid + '?updateMask.fieldPaths=payload&updateMask.fieldPaths=updatedAt&updateMask.fieldPaths=email&updateMask.fieldPaths=displayName&updateMask.fieldPaths=photoUrl';
           fetch(url, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               fields: {
+                email: { stringValue: email || '' },
+                displayName: { stringValue: displayName || '' },
+                photoUrl: { stringValue: photoUrl || '' },
                 payload: { stringValue: jsonStr },
                 updatedAt: { integerValue: String(Date.now()) }
               }

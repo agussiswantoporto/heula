@@ -72,7 +72,7 @@ class AuthRepositoryImpl(
             ?: return Result.failure(IllegalStateException("Belum masuk ke akun Google"))
 
         _syncState.value = SyncState.SYNCING
-        val syncResult = syncManager.sync(user.uid)
+        val syncResult = syncManager.sync(user)
         return syncResult.fold(
             onSuccess = { timestamp ->
                 settings.putLong(syncTimeKey, timestamp)
