@@ -1,7 +1,9 @@
 package id.heula.presentation.screen.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -11,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.Remove
@@ -25,6 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import id.heula.domain.model.*
 import id.heula.presentation.component.icon.HeulaIcons
 import id.heula.presentation.component.icon.getMoodVisual
@@ -40,11 +45,14 @@ import id.heula.presentation.component.ui.HeulaCard
 import id.heula.presentation.store.AppStore
 import id.heula.presentation.store.calculateStreak
 import id.heula.presentation.theme.BrandPrimary
+import id.heula.presentation.theme.DangerRed
 import id.heula.presentation.util.getStrings
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 
 @Composable
@@ -313,6 +321,8 @@ fun HomeScreen(
     if (showEditStartDialog && activeFast != null) {
         EditStartTimeModal(
             currentStartMs = activeFast!!.startMs,
+            targetHours = activeFast!!.targetHours,
+            isEnglish = settings.language == id.heula.domain.model.AppLanguage.ENGLISH,
             onSave = { newStartMs ->
                 store.updateStartTime(newStartMs)
                 showEditStartDialog = false
@@ -1083,69 +1093,507 @@ private fun FinishFastModal(
 @Composable
 private fun EditStartTimeModal(
     currentStartMs: Long,
+    targetHours: Double,
+    isEnglish: Boolean,
     onSave: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var hoursAgo by remember { mutableStateOf(1.0) }
+    val tz = remember { TimeZone.currentSystemDefault() }
+    var selectedStartMs by remember { mutableStateOf(currentStartMs) }
 
-    val newStartMs = (Clock.System.now().toEpochMilliseconds() - (hoursAgo * 3600000L).toLong())
-    val ldt = Instant.fromEpochMilliseconds(newStartMs).toLocalDateTime(TimeZone.currentSystemDefault())
-    val timePreview = "${ldt.hour.toString().padStart(2, '0')}:${ldt.minute.toString().padStart(2, '0')}"
+    val nowMs = Clock.System.now().toEpochMilliseconds()
+    val isFuture = selectedStartMs > (nowMs + 60_000L) // 1 minute grace buffer
+    val elapsedMs = (nowMs - selectedStartMs).coerceAtLeast(0L)
+    val elapsedHours = elapsedMs / 3600000L
+    val elapsedMins = (elapsedMs % 3600000L) / 60000L
 
-    AlertDialog(
+    val selectedLdt = Instant.fromEpochMilliseconds(selectedStartMs).toLocalDateTime(tz)
+    val nowLdt = Instant.fromEpochMilliseconds(nowMs).toLocalDateTime(tz)
+
+    val todayDate = nowLdt.date
+    val yesterdayDate = Instant.fromEpochMilliseconds(nowMs - 86_400_000L).toLocalDateTime(tz).date
+    val isToday = selectedLdt.date == todayDate
+    val isYesterday = selectedLdt.date == yesterdayDate
+
+    fun updateTime(hour: Int? = null, minute: Int? = null, setYesterday: Boolean? = null) {
+        val targetDate = when (setYesterday) {
+            true -> yesterdayDate
+            false -> todayDate
+            null -> selectedLdt.date
+        }
+        val h = (hour ?: selectedLdt.hour).coerceIn(0, 23)
+        val m = (minute ?: selectedLdt.minute).coerceIn(0, 59)
+        val newLdt = LocalDateTime(targetDate.year, targetDate.month, targetDate.dayOfMonth, h, m, 0, 0)
+        selectedStartMs = newLdt.toInstant(tz).toEpochMilliseconds()
+    }
+
+    val hourStr = selectedLdt.hour.toString().padStart(2, '0')
+    val minuteStr = selectedLdt.minute.toString().padStart(2, '0')
+
+    val targetEndMs = selectedStartMs + (targetHours * 3600000L).toLong()
+    val targetLdt = Instant.fromEpochMilliseconds(targetEndMs).toLocalDateTime(tz)
+    val targetHourStr = "${targetLdt.hour.toString().padStart(2, '0')}:${targetLdt.minute.toString().padStart(2, '0')}"
+    val targetDayLabel = when (targetLdt.date) {
+        todayDate -> if (isEnglish) "Today" else "Hari ini"
+        Instant.fromEpochMilliseconds(nowMs + 86_400_000L).toLocalDateTime(tz).date -> if (isEnglish) "Tomorrow" else "Besok"
+        else -> "${targetLdt.dayOfMonth} ${targetLdt.month.name.take(3)}"
+    }
+
+    val dayLabel = when {
+        isToday -> if (isEnglish) "Today" else "Hari ini"
+        isYesterday -> if (isEnglish) "Yesterday" else "Kemarin"
+        else -> "${selectedLdt.dayOfMonth} ${selectedLdt.month.name.take(3)}"
+    }
+
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Ubah Waktu Mulai Puasa", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(
-                    text = "Pilih berapa jam yang lalu puasa ini sebenarnya dimulai:",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val isWide = maxWidth >= 600.dp
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    ),
+                contentAlignment = if (isWide) Alignment.Center else Alignment.BottomCenter,
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                        )
+                        .then(
+                            if (isWide) {
+                                Modifier.width(460.dp).padding(vertical = 24.dp)
+                            } else {
+                                Modifier.fillMaxWidth()
+                            }
+                        ),
+                    shape = if (isWide) RoundedCornerShape(26.dp) else RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 16.dp,
                 ) {
-                    listOf(0.5, 1.0, 2.0, 4.0, 8.0, 12.0).forEach { h ->
-                        val isSelected = hoursAgo == h
-                        Button(
-                            onClick = { hoursAgo = h },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) BrandPrimary else MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                            modifier = Modifier.weight(1f),
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        // Grabber bar (mobile bottom sheet)
+                        if (!isWide) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterHorizontally)
+                                    .padding(bottom = 6.dp)
+                                    .size(width = 38.dp, height = 5.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
+                            )
+                        }
+
+                        // Header with Title and Close Button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(if (h < 1.0) "-30m" else "-${h.toInt()}j", fontSize = 11.sp)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (isEnglish) "Adjust Start Time" else "Atur Jam Mulai Puasa",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = if (isEnglish) "Fine-tune when your fast actually started." else "Sesuaikan jika kamu sudah mulai lebih awal atau lupa menyalakan timer.",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+
+                            Surface(
+                                onClick = onDismiss,
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Tutup",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
+                        }
+
+                        // Day Selector Segmented Control (Kemarin vs Hari Ini)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                // Tab Kemarin
+                                Surface(
+                                    onClick = { updateTime(setYesterday = true) },
+                                    modifier = Modifier.weight(1f).height(38.dp),
+                                    shape = RoundedCornerShape(9.dp),
+                                    color = if (isYesterday) MaterialTheme.colorScheme.surface else Color.Transparent,
+                                    shadowElevation = if (isYesterday) 2.dp else 0.dp,
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = if (isEnglish) "Yesterday" else "Kemarin",
+                                            fontSize = 13.sp,
+                                            fontWeight = if (isYesterday) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isYesterday) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+
+                                // Tab Hari Ini
+                                Surface(
+                                    onClick = { updateTime(setYesterday = false) },
+                                    modifier = Modifier.weight(1f).height(38.dp),
+                                    shape = RoundedCornerShape(9.dp),
+                                    color = if (isToday) MaterialTheme.colorScheme.surface else Color.Transparent,
+                                    shadowElevation = if (isToday) 2.dp else 0.dp,
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = if (isEnglish) "Today" else "Hari Ini",
+                                            fontSize = 13.sp,
+                                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isToday) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Time Dial / Stepper Card (Apple HIG Focus)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 16.dp, horizontal = 20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    // Hour Stepper Column
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Surface(
+                                            onClick = { updateTime(hour = (selectedLdt.hour + 1) % 24) },
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surface,
+                                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                                            modifier = Modifier.size(36.dp),
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(Icons.Default.Add, contentDescription = "Tambah Jam", modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.surface,
+                                            border = BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.4f)),
+                                            modifier = Modifier.width(72.dp).height(56.dp),
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = hourStr,
+                                                    fontSize = 32.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = BrandPrimary,
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Surface(
+                                            onClick = { updateTime(hour = (selectedLdt.hour + 23) % 24) },
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surface,
+                                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                                            modifier = Modifier.size(36.dp),
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(Icons.Default.Remove, contentDescription = "Kurang Jam", modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = if (isEnglish) "Hours" else "Jam (0-23)",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+
+                                    Text(
+                                        text = ":",
+                                        fontSize = 36.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 24.dp),
+                                    )
+
+                                    // Minute Stepper Column
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Surface(
+                                            onClick = { updateTime(minute = ((selectedLdt.minute / 5 * 5) + 5) % 60) },
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surface,
+                                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                                            modifier = Modifier.size(36.dp),
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(Icons.Default.Add, contentDescription = "Tambah Menit", modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.surface,
+                                            border = BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.4f)),
+                                            modifier = Modifier.width(72.dp).height(56.dp),
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = minuteStr,
+                                                    fontSize = 32.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = BrandPrimary,
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Surface(
+                                            onClick = { updateTime(minute = ((selectedLdt.minute / 5 * 5) + 55) % 60) },
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surface,
+                                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                                            modifier = Modifier.size(36.dp),
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(Icons.Default.Remove, contentDescription = "Kurang Menit", modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = if (isEnglish) "Mins" else "Menit (0-59)",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Quick Adjust Steppers (-1h, -30m, +30m, +1h)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            listOf(
+                                "-1j" to -3600000L,
+                                "-30m" to -1800000L,
+                                "+30m" to 1800000L,
+                                "+1j" to 3600000L,
+                            ).forEach { (label, deltaMs) ->
+                                Surface(
+                                    onClick = { selectedStartMs += deltaMs },
+                                    modifier = Modifier.weight(1f).height(36.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Quick Presets Row
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = if (isEnglish) "Common Presets:" else "Pilihan Cepat:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Surface(
+                                    onClick = { updateTime(hour = 20, minute = 0, setYesterday = true) },
+                                    modifier = Modifier.weight(1f).height(34.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("Kmrn 20:00", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                }
+                                Surface(
+                                    onClick = { updateTime(hour = 21, minute = 0, setYesterday = true) },
+                                    modifier = Modifier.weight(1f).height(34.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("Kmrn 21:00", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                }
+                                Surface(
+                                    onClick = { selectedStartMs = nowMs },
+                                    modifier = Modifier.weight(1f).height(34.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(if (isEnglish) "Now" else "Sekarang", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Live Calculation / Summary Card
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isFuture) DangerRed.copy(alpha = 0.08f) else BrandPrimary.copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, if (isFuture) DangerRed.copy(alpha = 0.4f) else BrandPrimary.copy(alpha = 0.25f)),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                if (isFuture) {
+                                    Text(
+                                        text = if (isEnglish) "⚠️ Start time cannot be in the future." else "⚠️ Waktu mulai tidak boleh melebihi waktu saat ini.",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = DangerRed,
+                                    )
+                                } else {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            text = if (isEnglish) "New Start Time:" else "Waktu Mulai Baru:",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text = "$dayLabel, $hourStr:$minuteStr",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            text = if (isEnglish) "Elapsed Fasting Time:" else "Durasi Puasa Berjalan:",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text = "${elapsedHours} jam ${elapsedMins} menit",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = BrandPrimary,
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            text = if (isEnglish) "Projected Goal End:" else "Target Buka Puasa:",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text = "$targetDayLabel, pukul $targetHourStr",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Bottom Actions (Batal & Terapkan)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            OutlinedButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(14.dp),
+                            ) {
+                                Text(if (isEnglish) "Cancel" else "Batal")
+                            }
+
+                            Button(
+                                onClick = { onSave(selectedStartMs) },
+                                enabled = !isFuture,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                            ) {
+                                Text(
+                                    text = if (isEnglish) "Apply" else "Terapkan",
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
                         }
                     }
                 }
-
-                HeulaCard(backgroundColor = MaterialTheme.colorScheme.surfaceVariant) {
-                    Text(
-                        text = "Waktu mulai disesuaikan: Pukul $timePreview",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onSave(newStartMs) },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-            ) {
-                Text("Terapkan", fontWeight = FontWeight.SemiBold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Batal") }
-        },
-        shape = RoundedCornerShape(22.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-    )
+        }
+    }
 }

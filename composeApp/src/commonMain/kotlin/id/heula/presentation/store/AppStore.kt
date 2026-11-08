@@ -188,6 +188,7 @@ class AppStore(
                     targetHours = resolveTargetHours(chosenMethod, customFastingHours),
                     planId = chosenMethod,
                     planLabel = resolvePlanLabel(chosenMethod, customFastingHours),
+                    updatedAtMs = nowMs,
                 ).toSerializable(),
                 eatingWindowStartMs = null, // Close eating window when fasting starts
             )
@@ -196,10 +197,12 @@ class AppStore(
     }
 
     fun editStartTime(startMs: Long) {
+        val now = Clock.System.now().toEpochMilliseconds()
         update {
             val fast = activeFast ?: return@update this
-            if (startMs > Clock.System.now().toEpochMilliseconds()) return@update this
-            copy(activeFast = fast.copy(startMs = startMs))
+            if (startMs > now + 60_000L) return@update this
+            val safeStartMs = startMs.coerceAtMost(now)
+            copy(activeFast = fast.copy(startMs = safeStartMs, updatedAtMs = now))
         }
         triggerAutoSync()
     }

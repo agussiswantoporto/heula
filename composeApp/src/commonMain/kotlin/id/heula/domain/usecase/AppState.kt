@@ -27,7 +27,8 @@ data class SerializableActiveFast(
     val targetHours: Double,
     val planId: MethodId,
     val planLabel: String,
+    val updatedAtMs: Long = startMs,
 )
 
-fun SerializableActiveFast.toActiveFast() = ActiveFast(startMs, targetHours, planId, planLabel)
-fun ActiveFast.toSerializable() = SerializableActiveFast(startMs, targetHours, planId, planLabel)
+fun SerializableActiveFast.toActiveFast() = ActiveFast(startMs, targetHours, planId, planLabel, updatedAtMs)
+fun ActiveFast.toSerializable() = SerializableActiveFast(startMs, targetHours, planId, planLabel, updatedAtMs)

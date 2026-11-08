@@ -39,6 +39,7 @@ data class ActiveFast(
     val targetHours: Double,
     val planId: MethodId,
     val planLabel: String,
+    val updatedAtMs: Long = startMs,
 )
 
 @Serializable

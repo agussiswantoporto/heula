@@ -149,9 +149,9 @@ class SyncManager(
 
         // Determine resolved active fast and eating window state
         val (resolvedActiveFast, resolvedEatingStartMs, resolvedEatingHours) = when {
-            // Case 1: Both devices report an active fast -> newer one wins
+            // Case 1: Both devices report an active fast -> most recently modified wins
             localFast != null && cloudFast != null -> {
-                if (localFast.startMs >= cloudFast.startMs) {
+                if (localFast.updatedAtMs >= cloudFast.updatedAtMs) {
                     Triple(localFast, null, local.eatingWindowHours)
                 } else {
                     Triple(cloudFast, null, cloud.eatingWindowHours)
@@ -160,7 +160,7 @@ class SyncManager(
             // Case 2: Only local has active fast
             localFast != null -> {
                 val cloudEatingStart = cloud.eatingWindowStartMs ?: 0L
-                if (cloudEatingStart > localFast.startMs) {
+                if (cloudEatingStart > localFast.updatedAtMs) {
                     Triple(null, cloudEatingStart, cloud.eatingWindowHours)
                 } else {
                     Triple(localFast, null, local.eatingWindowHours)
@@ -169,7 +169,7 @@ class SyncManager(
             // Case 3: Only cloud has active fast
             cloudFast != null -> {
                 val localEatingStart = local.eatingWindowStartMs ?: 0L
-                if (localEatingStart > cloudFast.startMs) {
+                if (localEatingStart > cloudFast.updatedAtMs) {
                     Triple(null, localEatingStart, local.eatingWindowHours)
                 } else {
                     Triple(cloudFast, null, cloud.eatingWindowHours)
