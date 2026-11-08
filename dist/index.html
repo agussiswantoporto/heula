@@ -103,7 +103,7 @@
                     window.localStorage.setItem('heula_google_auth_result', '__ERR__:' + err.message);
                   });
                 } else if (tokenResponse && tokenResponse.error) {
-                  window.localStorage.setItem('heula_google_auth_result', '__CANCELLED__:' + tokenResponse.error);
+                  window.localStorage.setItem('heula_google_auth_result', '__ERR__:' + (tokenResponse.error_description || tokenResponse.error));
                 } else {
                   window.localStorage.setItem('heula_google_auth_result', '__CANCELLED__:empty_response');
                 }
@@ -111,7 +111,12 @@
               error_callback: function(error) {
                 window.heulaAuthActive = false;
                 console.warn('Google Identity error/cancel:', error);
-                window.localStorage.setItem('heula_google_auth_result', '__CANCELLED__:' + (error && error.type ? error.type : 'error'));
+                var errType = (error && error.type) ? error.type : 'error';
+                if (errType === 'popup_closed' || errType === 'user_cancel') {
+                  window.localStorage.setItem('heula_google_auth_result', '__CANCELLED__:' + errType);
+                } else {
+                  window.localStorage.setItem('heula_google_auth_result', '__ERR__:' + errType);
+                }
               }
             });
           }
@@ -149,18 +154,6 @@
           } catch (e) {}
         }
       };
-
-      // Detect return to window/app if user dismissed popup outside callback
-      window.addEventListener('focus', function() {
-        if (window.heulaAuthActive) {
-          setTimeout(function() {
-            if (window.heulaAuthActive && !window.localStorage.getItem('heula_google_auth_result')) {
-              window.heulaAuthActive = false;
-              window.localStorage.setItem('heula_google_auth_result', '__CANCELLED__:focus_returned');
-            }
-          }, 2500);
-        }
-      });
 
       window.heulaFirestore = {
         projectId: 'heula-514007',

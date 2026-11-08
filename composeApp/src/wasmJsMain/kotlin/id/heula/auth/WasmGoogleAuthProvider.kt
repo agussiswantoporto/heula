@@ -25,8 +25,18 @@ class WasmGoogleAuthProvider : GoogleAuthProvider {
             null
         }
 
-        if (result == null || result.startsWith("__CANCELLED__")) {
-            return Result.failure(Exception("Login Google dibatalkan."))
+        if (result == null) {
+            return Result.failure(Exception("Waktu login Google habis atau tidak ada respon."))
+        }
+
+        if (result.startsWith("__CANCELLED__")) {
+            val reason = result.removePrefix("__CANCELLED__").removePrefix(":")
+            val msg = if (reason.isEmpty() || reason == "popup_closed" || reason == "user_cancel") {
+                "Login Google dibatalkan."
+            } else {
+                "Login Google: $reason"
+            }
+            return Result.failure(Exception(msg))
         }
 
         if (result.startsWith("__ERR__:")) {

@@ -57,6 +57,7 @@ fun ProfileScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showPlanSelector by remember { mutableStateOf(false) }
     var showCustomHoursDialog by remember { mutableStateOf(false) }
+    var authErrorMessage by remember { mutableStateOf<String?>(null) }
 
     BoxWithConstraints(
         modifier = modifier
@@ -144,7 +145,14 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
-                        onClick = { store.signInWithGoogle() },
+                        onClick = {
+                            authErrorMessage = null
+                            store.signInWithGoogle { res ->
+                                res.onFailure { err ->
+                                    authErrorMessage = err.message ?: "Gagal terhubung ke Google."
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -178,6 +186,23 @@ fun ProfileScreen(
                                 text = s.signInWithGoogle,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+
+                    if (!authErrorMessage.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = authErrorMessage ?: "",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             )
                         }
                     }
