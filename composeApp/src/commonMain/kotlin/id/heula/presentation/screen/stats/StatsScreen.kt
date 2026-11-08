@@ -89,6 +89,8 @@ fun StatsScreen(
                     )
 
                     WeeklyChartCard(sessions = sessions, s = s)
+
+                    MonthlyCalendarCard(sessions = sessions, language = settings.language)
                 }
 
                 // Right Column: Weight tracking & Achievements
@@ -130,6 +132,8 @@ fun StatsScreen(
                 )
 
                 WeeklyChartCard(sessions = sessions, s = s)
+
+                MonthlyCalendarCard(sessions = sessions, language = settings.language)
 
                 WeightSection(
                     weights = weights,

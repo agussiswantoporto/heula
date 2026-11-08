@@ -978,6 +978,50 @@
           }
         }
       };
+
+      // Zen Gong Audio Synthesizer (Web Audio API - 100% Client-Side)
+      window.heulaZenAudio = {
+        ctx: null,
+        playZenGong: function() {
+          try {
+            var AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!this.ctx) {
+              this.ctx = new AudioCtx();
+            }
+            if (this.ctx.state === 'suspended') {
+              this.ctx.resume();
+            }
+            var now = this.ctx.currentTime;
+            
+            // Tibetan singing bowl harmonics: 528 Hz fundamental + resonant overtones
+            var freqs = [528.0, 1056.0, 1584.0, 2112.0];
+            var gains = [0.32, 0.15, 0.06, 0.025];
+            var decays = [3.2, 2.4, 1.7, 1.1];
+
+            for (var i = 0; i < freqs.length; i++) {
+              var osc = this.ctx.createOscillator();
+              var gain = this.ctx.createGain();
+
+              osc.type = 'sine';
+              var detune = (i === 0) ? 0 : (Math.sin(i * 1.5) * 1.8);
+              osc.frequency.setValueAtTime(freqs[i] + detune, now);
+
+              gain.gain.setValueAtTime(0.0001, now);
+              gain.gain.exponentialRampToValueAtTime(gains[i], now + 0.02);
+              gain.gain.exponentialRampToValueAtTime(0.0001, now + decays[i]);
+
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+
+              osc.start(now);
+              osc.stop(now + decays[i]);
+            }
+          } catch (e) {
+            console.warn('Zen audio error:', e);
+          }
+        }
+      };
     </script>
 </head>
 <body>

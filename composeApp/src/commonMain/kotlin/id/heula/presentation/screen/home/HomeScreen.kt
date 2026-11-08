@@ -30,6 +30,8 @@ import id.heula.presentation.component.icon.HeulaIcons
 import id.heula.presentation.component.icon.getMoodVisual
 import id.heula.presentation.component.timer.ProgressRing
 import id.heula.presentation.component.timer.StageIndicator
+import id.heula.presentation.component.animation.CelebrationOverlay
+import id.heula.presentation.util.playZenGongSound
 import id.heula.presentation.screen.share.FastingShareModal
 import id.heula.presentation.component.ui.ButtonVariant
 import id.heula.presentation.component.ui.HeulaBadge
@@ -75,6 +77,7 @@ fun HomeScreen(
     var showPlanSelector by remember { mutableStateOf(false) }
     var showCustomHoursDialog by remember { mutableStateOf(false) }
     var sessionToShare by remember { mutableStateOf<FastingSession?>(null) }
+    var showCelebration by remember { mutableStateOf(false) }
 
     BoxWithConstraints(
         modifier = modifier
@@ -260,6 +263,8 @@ fun HomeScreen(
                 store.stopFast(currentTimeMs, mood, note)
                 showFinishFastModal = false
                 sessionToShare = session
+                playZenGongSound()
+                showCelebration = true
             },
             onDismiss = { showFinishFastModal = false },
         )
@@ -315,6 +320,11 @@ fun HomeScreen(
             onDismiss = { showEditStartDialog = false },
         )
     }
+
+    CelebrationOverlay(
+        show = showCelebration,
+        onFinished = { showCelebration = false },
+    )
 }
 
 @Composable
