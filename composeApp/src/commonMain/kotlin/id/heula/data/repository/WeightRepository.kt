@@ -8,4 +8,7 @@ interface WeightRepository {
     suspend fun add(record: WeightRecord): Long
     suspend fun delete(id: Long): Boolean
     suspend fun clearAll()
+    suspend fun replaceAll(records: List<WeightRecord>)
+    fun getDeletedTimestamps(): Set<Long>
+    suspend fun markDeleted(timestamps: Collection<Long>)
 }

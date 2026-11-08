@@ -10,4 +10,6 @@ data class UserCloudData(
     val sessions: List<FastingSession> = emptyList(),
     val weights: List<WeightRecord> = emptyList(),
     val settings: AppSettings = AppSettings(),
+    val deletedSessions: List<Long> = emptyList(),
+    val deletedWeights: List<Long> = emptyList(),
 )

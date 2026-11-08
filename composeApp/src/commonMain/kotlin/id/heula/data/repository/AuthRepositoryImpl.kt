@@ -9,6 +9,8 @@ import id.heula.domain.usecase.SyncManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -30,6 +32,9 @@ class AuthRepositoryImpl(
 
     private val _lastSyncedAt = MutableStateFlow(settings.getLongOrNull(syncTimeKey))
     override val lastSyncedAt: StateFlow<Long?> = _lastSyncedAt.asStateFlow()
+
+    private val syncMutex = Mutex()
+    private var syncPending = false
 
     private fun loadCachedUser(): UserAccount? {
         val raw = settings.getStringOrNull(userKey) ?: return null
@@ -71,19 +76,31 @@ class AuthRepositoryImpl(
         val user = _currentUser.value
             ?: return Result.failure(IllegalStateException("Belum masuk ke akun Google"))
 
-        _syncState.value = SyncState.SYNCING
-        val syncResult = syncManager.sync(user)
-        return syncResult.fold(
-            onSuccess = { timestamp ->
-                settings.putLong(syncTimeKey, timestamp)
-                _lastSyncedAt.value = timestamp
-                _syncState.value = SyncState.SYNCED
-                Result.success(Unit)
-            },
-            onFailure = { err ->
-                _syncState.value = SyncState.IDLE
-                Result.failure(err)
-            }
-        )
+        if (syncMutex.isLocked) {
+            syncPending = true
+            return Result.success(Unit)
+        }
+
+        return syncMutex.withLock {
+            var lastResult: Result<Unit>
+            do {
+                syncPending = false
+                _syncState.value = SyncState.SYNCING
+                val syncResult = syncManager.sync(user)
+                lastResult = syncResult.fold(
+                    onSuccess = { timestamp ->
+                        settings.putLong(syncTimeKey, timestamp)
+                        _lastSyncedAt.value = timestamp
+                        _syncState.value = SyncState.SYNCED
+                        Result.success(Unit)
+                    },
+                    onFailure = { err ->
+                        _syncState.value = SyncState.IDLE
+                        Result.failure(err)
+                    }
+                )
+            } while (syncPending)
+            lastResult
+        }
     }
 }

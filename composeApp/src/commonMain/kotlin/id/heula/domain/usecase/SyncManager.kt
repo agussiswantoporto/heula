@@ -30,31 +30,34 @@ class SyncManager(
             val localWeights = weightRepository.observeAll().first()
             val localSettings = settingsRepository.observe().first()
 
-            // 3. Smart Merge Sessions
-            val mergedSessions = mergeSessions(localSessions, cloudData?.sessions ?: emptyList())
-            sessionRepository.clearAll()
-            for (session in mergedSessions.reversed()) {
-                sessionRepository.add(session)
-            }
+            // 3. Collect deleted tombstones from local and cloud
+            val allDeletedSessions = (sessionRepository.getDeletedStartMs() + (cloudData?.deletedSessions ?: emptyList())).toSet()
+            val allDeletedWeights = (weightRepository.getDeletedTimestamps() + (cloudData?.deletedWeights ?: emptyList())).toSet()
 
-            // 4. Smart Merge Weights
-            val mergedWeights = mergeWeights(localWeights, cloudData?.weights ?: emptyList())
-            weightRepository.clearAll()
-            for (w in mergedWeights) {
-                weightRepository.add(w)
-            }
+            sessionRepository.markDeleted(allDeletedSessions)
+            weightRepository.markDeleted(allDeletedWeights)
 
-            // 5. Smart Merge Settings (Includes active fasting counter & eating window)
+            // 4. Smart Merge Sessions (excluding deleted)
+            val mergedSessions = mergeSessions(localSessions, cloudData?.sessions ?: emptyList(), allDeletedSessions)
+            sessionRepository.replaceAll(mergedSessions)
+
+            // 5. Smart Merge Weights (excluding deleted)
+            val mergedWeights = mergeWeights(localWeights, cloudData?.weights ?: emptyList(), allDeletedWeights)
+            weightRepository.replaceAll(mergedWeights)
+
+            // 6. Smart Merge Settings (Includes active fasting counter & eating window)
             val mergedSettings = mergeSettings(localSettings, cloudData?.settings, mergedSessions)
             settingsRepository.save(mergedSettings)
 
-            // 6. Upload merged data with user info to Cloud
+            // 7. Upload merged data with user info & tombstones to Cloud
             val payload = UserCloudData(
                 user = user,
                 lastSyncedAt = now,
                 sessions = mergedSessions,
                 weights = mergedWeights,
                 settings = mergedSettings,
+                deletedSessions = allDeletedSessions.toList(),
+                deletedWeights = allDeletedWeights.toList(),
             )
             val uploadRes = cloudSyncService.uploadUserData(user, payload)
             if (uploadRes.isSuccess) {
@@ -67,26 +70,34 @@ class SyncManager(
         }
     }
 
-    private fun mergeSessions(local: List<FastingSession>, cloud: List<FastingSession>): List<FastingSession> {
+    private fun mergeSessions(
+        local: List<FastingSession>,
+        cloud: List<FastingSession>,
+        deletedStartMs: Set<Long>,
+    ): List<FastingSession> {
         val map = mutableMapOf<Long, FastingSession>()
         for (s in cloud) {
-            map[s.startMs] = s
+            if (s.startMs !in deletedStartMs) {
+                map[s.startMs] = s
+            }
         }
         for (localS in local) {
-            val existing = map[localS.startMs]
-            if (existing == null) {
-                map[localS.startMs] = localS
-            } else {
-                val completed = existing.completed || localS.completed
-                val endMs = maxOf(existing.endMs, localS.endMs)
-                val mood = localS.mood ?: existing.mood
-                val note = if (!localS.note.isNullOrBlank()) localS.note else existing.note
-                map[localS.startMs] = existing.copy(
-                    completed = completed,
-                    endMs = endMs,
-                    mood = mood,
-                    note = note,
-                )
+            if (localS.startMs !in deletedStartMs) {
+                val existing = map[localS.startMs]
+                if (existing == null) {
+                    map[localS.startMs] = localS
+                } else {
+                    val completed = existing.completed || localS.completed
+                    val endMs = if (localS.endMs > 0L) localS.endMs else existing.endMs
+                    val mood = localS.mood ?: existing.mood
+                    val note = if (!localS.note.isNullOrBlank()) localS.note else existing.note
+                    map[localS.startMs] = localS.copy(
+                        completed = completed,
+                        endMs = endMs,
+                        mood = mood,
+                        note = note,
+                    )
+                }
             }
         }
         return map.values.sortedByDescending { it.startMs }.mapIndexed { idx, item ->
@@ -94,13 +105,21 @@ class SyncManager(
         }
     }
 
-    private fun mergeWeights(local: List<WeightRecord>, cloud: List<WeightRecord>): List<WeightRecord> {
+    private fun mergeWeights(
+        local: List<WeightRecord>,
+        cloud: List<WeightRecord>,
+        deletedTimestamps: Set<Long>,
+    ): List<WeightRecord> {
         val map = mutableMapOf<Long, WeightRecord>()
         for (w in cloud) {
-            map[w.recordedAt] = w
+            if (w.recordedAt !in deletedTimestamps) {
+                map[w.recordedAt] = w
+            }
         }
         for (w in local) {
-            map[w.recordedAt] = w
+            if (w.recordedAt !in deletedTimestamps) {
+                map[w.recordedAt] = w
+            }
         }
         return map.values.sortedBy { it.recordedAt }.mapIndexed { idx, item ->
             item.copy(id = (idx + 1).toLong())

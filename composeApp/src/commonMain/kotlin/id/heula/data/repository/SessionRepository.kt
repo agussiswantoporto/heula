@@ -11,4 +11,7 @@ interface SessionRepository {
     suspend fun setMoodNote(id: Long, mood: Mood?, note: String?): Boolean
     suspend fun update(session: FastingSession): Boolean
     suspend fun clearAll()
+    suspend fun replaceAll(sessions: List<FastingSession>)
+    fun getDeletedStartMs(): Set<Long>
+    suspend fun markDeleted(startMsList: Collection<Long>)
 }

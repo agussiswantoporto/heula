@@ -97,7 +97,7 @@ class AppStore(
     }
 
     fun triggerAutoSync() {
-        if (currentUser.value != null && syncState.value != SyncState.SYNCING) {
+        if (currentUser.value != null) {
             scope.launch {
                 authRepository.syncAllData()
             }
@@ -264,6 +264,10 @@ class AppStore(
 
     fun resetAll() {
         scope.launch {
+            val sessions = sessionRepository.observeAll().first()
+            val weights = weightRepository.observeAll().first()
+            sessionRepository.markDeleted(sessions.map { it.startMs })
+            weightRepository.markDeleted(weights.map { it.recordedAt })
             sessionRepository.clearAll()
             weightRepository.clearAll()
             update { AppSettings() }
