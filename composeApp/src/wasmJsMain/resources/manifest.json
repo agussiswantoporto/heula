@@ -1,0 +1,28 @@
+{
+  "name": "Heula - Teman Puasa Berkala",
+  "short_name": "Heula",
+  "description": "Aplikasi pelacak puasa intermiten modern dengan pengatur waktu cerdas, analitik fase tubuh, dan jurnal harian.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2F3F5",
+  "theme_color": "#34C759",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
