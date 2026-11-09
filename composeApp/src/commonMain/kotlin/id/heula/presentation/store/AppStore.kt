@@ -207,6 +207,16 @@ class AppStore(
         triggerAutoSync()
     }
 
+    fun updateSleepSchedule(startHour: Int, endHour: Int) {
+        update {
+            copy(
+                sleepStartHour = startHour.coerceIn(0, 23),
+                sleepEndHour = endHour.coerceIn(0, 23)
+            )
+        }
+        triggerAutoSync()
+    }
+
     fun updateStartTime(startMs: Long) = editStartTime(startMs)
 
     fun stopFast(

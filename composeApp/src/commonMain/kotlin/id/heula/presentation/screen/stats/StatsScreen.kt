@@ -80,6 +80,8 @@ fun StatsScreen(
                 ) {
                     Text(s.statsTitle, fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
+                    SmartTrendsCard(sessions = sessions, s = s)
+
                     SummaryGrid(
                         streak = streak,
                         totalFasts = totalFasts,
@@ -122,6 +124,8 @@ fun StatsScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 Text(s.statsTitle, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+
+                SmartTrendsCard(sessions = sessions, s = s)
 
                 SummaryGrid(
                     streak = streak,

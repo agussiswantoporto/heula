@@ -122,6 +122,7 @@ fun getStageVisual(stageKey: String): StageVisual {
 fun StageIndicator(
     stage: Stage,
     elapsedMs: Long,
+    s: id.heula.presentation.util.Strings = id.heula.presentation.util.IndonesianStrings,
     modifier: Modifier = Modifier,
 ) {
     var showTimelineModal by remember { mutableStateOf(false) }
@@ -314,9 +315,10 @@ fun StageIndicator(
     }
 
     if (showTimelineModal) {
-        FastingJourneyModal(
+        id.heula.presentation.component.metabolism.MetabolismJournalModal(
             currentStage = stage,
             elapsedMs = elapsedMs,
+            s = s,
             onDismiss = { showTimelineModal = false },
         )
     }

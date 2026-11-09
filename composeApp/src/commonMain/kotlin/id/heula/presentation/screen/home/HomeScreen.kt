@@ -84,6 +84,7 @@ fun HomeScreen(
     var showEditStartDialog by remember { mutableStateOf(false) }
     var showPlanSelector by remember { mutableStateOf(false) }
     var showCustomHoursDialog by remember { mutableStateOf(false) }
+    var showHungerSosModal by remember { mutableStateOf(false) }
     var sessionToShare by remember { mutableStateOf<FastingSession?>(null) }
     var showCelebration by remember { mutableStateOf(false) }
 
@@ -131,6 +132,7 @@ fun HomeScreen(
                         onStart = { store.startFast() },
                         onStop = { showFinishFastModal = true },
                         onEditStart = { showEditStartDialog = true },
+                        onOpenHungerSos = { showHungerSosModal = true },
                     )
                 }
 
@@ -151,7 +153,7 @@ fun HomeScreen(
                     if (activeFast != null) {
                         val elapsedMs = (currentTimeMs - activeFast!!.startMs).coerceAtLeast(0L)
                         val stage = stageForElapsed(elapsedMs)
-                        StageIndicator(stage = stage, elapsedMs = elapsedMs)
+                        StageIndicator(stage = stage, elapsedMs = elapsedMs, s = s)
                     } else if (isEatingWindow) {
                         EatingWindowCard(
                             eatingStartMs = eatingStart ?: 0L,
@@ -168,6 +170,14 @@ fun HomeScreen(
                         isEatingWindow = isEatingWindow,
                         eatingHours = eatingHours,
                         s = s,
+                    )
+
+                    CircadianPlannerCard(
+                        sleepStartHour = settings.sleepStartHour,
+                        sleepEndHour = settings.sleepEndHour,
+                        targetFastingHours = if (activeFast != null) activeFast!!.targetHours else (METHODS[settings.chosenMethod]?.fastingHours ?: 16.0),
+                        s = s,
+                        onUpdateSleepSchedule = { start, end -> store.updateSleepSchedule(start, end) },
                     )
 
                     MethodCard(
@@ -207,6 +217,7 @@ fun HomeScreen(
                     onStart = { store.startFast() },
                     onStop = { showFinishFastModal = true },
                     onEditStart = { showEditStartDialog = true },
+                    onOpenHungerSos = { showHungerSosModal = true },
                 )
 
                 WaterTrackerCard(
@@ -218,7 +229,7 @@ fun HomeScreen(
                 if (activeFast != null) {
                     val elapsedMs = (currentTimeMs - activeFast!!.startMs).coerceAtLeast(0L)
                     val stage = stageForElapsed(elapsedMs)
-                    StageIndicator(stage = stage, elapsedMs = elapsedMs)
+                    StageIndicator(stage = stage, elapsedMs = elapsedMs, s = s)
                 } else if (isEatingWindow) {
                     EatingWindowCard(
                         eatingStartMs = eatingStart ?: 0L,
@@ -235,6 +246,14 @@ fun HomeScreen(
                     isEatingWindow = isEatingWindow,
                     eatingHours = eatingHours,
                     s = s,
+                )
+
+                CircadianPlannerCard(
+                    sleepStartHour = settings.sleepStartHour,
+                    sleepEndHour = settings.sleepEndHour,
+                    targetFastingHours = if (activeFast != null) activeFast!!.targetHours else (METHODS[settings.chosenMethod]?.fastingHours ?: 16.0),
+                    s = s,
+                    onUpdateSleepSchedule = { start, end -> store.updateSleepSchedule(start, end) },
                 )
 
                 MethodCard(
@@ -328,6 +347,15 @@ fun HomeScreen(
                 showEditStartDialog = false
             },
             onDismiss = { showEditStartDialog = false },
+        )
+    }
+
+    if (showHungerSosModal) {
+        id.heula.presentation.component.hungersos.HungerSosModal(
+            activeFast = activeFast,
+            currentTimeMs = currentTimeMs,
+            s = s,
+            onDismiss = { showHungerSosModal = false },
         )
     }
 
@@ -453,6 +481,7 @@ private fun TimerActions(
     onStart: () -> Unit,
     onStop: () -> Unit,
     onEditStart: () -> Unit,
+    onOpenHungerSos: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -477,6 +506,35 @@ private fun TimerActions(
                 variant = ButtonVariant.Secondary,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Surface(
+                onClick = onOpenHungerSos,
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFFFF9500).copy(alpha = 0.12f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9500).copy(alpha = 0.35f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = id.heula.presentation.component.icon.HeulaIcons.Lifebuoy,
+                        contentDescription = null,
+                        tint = Color(0xFFFF9500),
+                        modifier = Modifier.size(17.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = s.hungerSosButton,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFF9500),
+                    )
+                }
+            }
         }
     }
 }

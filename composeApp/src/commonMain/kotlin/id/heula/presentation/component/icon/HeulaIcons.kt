@@ -292,4 +292,308 @@ object HeulaIcons {
             }
         }.build()
     }
+
+    // Flame / Fat Burning Icon (iOS Apple HIG style)
+    val Flame: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Flame",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(12.0f, 2.0f)
+                curveToRelative(-0.25f, 2.25f, -1.5f, 4.5f, -3.25f, 6.25f)
+                curveTo(7.0f, 10.0f, 6.0f, 12.0f, 6.0f, 14.5f)
+                curveToRelative(0.0f, 3.31f, 2.69f, 6.0f, 6.0f, 6.0f)
+                reflectiveCurveToRelative(6.0f, -2.69f, 6.0f, -6.0f)
+                curveToRelative(0.0f, -3.0f, -2.0f, -5.5f, -3.5f, -7.0f)
+                curveToRelative(-0.5f, 1.5f, -1.5f, 2.5f, -2.5f, 3.0f)
+                curveToRelative(0.0f, -3.0f, 0.0f, -6.0f, 0.0f, -8.5f)
+                close()
+            }
+        }.build()
+    }
+
+    // Moon / Night Sleep Circadian Icon
+    val Moon: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Moon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(12.3f, 2.0f)
+                curveToRelative(-0.43f, 0.0f, -0.7f, 0.47f, -0.47f, 0.83f)
+                curveTo(13.44f, 5.41f, 13.5f, 8.78f, 11.66f, 11.66f)
+                curveTo(9.82f, 14.54f, 6.57f, 15.63f, 3.48f, 14.52f)
+                curveToRelative(-0.41f, -0.15f, -0.81f, 0.22f, -0.73f, 0.65f)
+                curveTo(3.72f, 19.46f, 7.54f, 22.5f, 12.08f, 22.5f)
+                curveToRelative(5.77f, 0.0f, 10.42f, -4.68f, 10.42f, -10.42f)
+                curveTo(22.5f, 6.84f, 18.06f, 2.3f, 12.3f, 2.0f)
+                close()
+            }
+        }.build()
+    }
+
+    // Sun / Daytime Circadian Icon
+    val Sun: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Sun",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(12.0f, 7.0f)
+                curveToRelative(-2.76f, 0.0f, -5.0f, 2.24f, -5.0f, 5.0f)
+                reflectiveCurveToRelative(2.24f, 5.0f, 5.0f, 5.0f)
+                reflectiveCurveToRelative(5.0f, -2.24f, 5.0f, -5.0f)
+                reflectiveCurveToRelative(-2.24f, -5.0f, -5.0f, -5.0f)
+                close()
+                moveTo(12.0f, 2.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, 0.45f, -1.0f, 1.0f)
+                verticalLineToRelative(2.0f)
+                curveToRelative(0.0f, 0.55f, 0.45f, 1.0f, 1.0f, 1.0f)
+                reflectiveCurveToRelative(1.0f, -0.45f, 1.0f, -1.0f)
+                verticalLineTo(3.0f)
+                curveToRelative(0.0f, -0.55f, -0.45f, -1.0f, -1.0f, -1.0f)
+                close()
+                moveTo(12.0f, 18.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, 0.45f, -1.0f, 1.0f)
+                verticalLineToRelative(2.0f)
+                curveToRelative(0.0f, 0.55f, 0.45f, 1.0f, 1.0f, 1.0f)
+                reflectiveCurveToRelative(1.0f, -0.45f, 1.0f, -1.0f)
+                verticalLineToRelative(-2.0f)
+                curveToRelative(0.0f, -0.55f, -0.45f, -1.0f, -1.0f, -1.0f)
+                close()
+                moveTo(5.64f, 4.22f)
+                curveToRelative(-0.39f, -0.39f, -1.02f, -0.39f, -1.41f, 0.0f)
+                reflectiveCurveToRelative(-0.39f, 1.02f, 0.0f, 1.41f)
+                lineToRelative(1.41f, 1.41f)
+                curveToRelative(0.39f, 0.39f, 1.02f, 0.39f, 1.41f, 0.0f)
+                reflectiveCurveToRelative(0.39f, -1.02f, 0.0f, -1.41f)
+                lineTo(5.64f, 4.22f)
+                close()
+                moveTo(18.36f, 16.95f)
+                curveToRelative(-0.39f, -0.39f, -1.02f, -0.39f, -1.41f, 0.0f)
+                reflectiveCurveToRelative(-0.39f, 1.02f, 0.0f, 1.41f)
+                lineToRelative(1.41f, 1.41f)
+                curveToRelative(0.39f, 0.39f, 1.02f, 0.39f, 1.41f, 0.0f)
+                reflectiveCurveToRelative(0.39f, -1.02f, 0.0f, -1.41f)
+                lineToRelative(-1.41f, -1.41f)
+                close()
+                moveTo(2.0f, 12.0f)
+                curveToRelative(0.0f, -0.55f, 0.45f, -1.0f, 1.0f, -1.0f)
+                horizontalLineToRelative(2.0f)
+                curveToRelative(0.55f, 0.0f, 1.0f, 0.45f, 1.0f, 1.0f)
+                reflectiveCurveToRelative(-0.45f, 1.0f, -1.0f, 1.0f)
+                horizontalLineTo(3.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, -0.45f, -1.0f, -1.0f)
+                close()
+                moveTo(18.0f, 12.0f)
+                curveToRelative(0.0f, -0.55f, 0.45f, -1.0f, 1.0f, -1.0f)
+                horizontalLineToRelative(2.0f)
+                curveToRelative(0.55f, 0.0f, 1.0f, 0.45f, 1.0f, 1.0f)
+                reflectiveCurveToRelative(-0.45f, 1.0f, -1.0f, 1.0f)
+                horizontalLineToRelative(-2.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, -0.45f, -1.0f, -1.0f)
+                close()
+                moveTo(6.05f, 16.95f)
+                lineToRelative(-1.41f, 1.41f)
+                curveToRelative(-0.39f, 0.39f, -0.39f, 1.02f, 0.0f, 1.41f)
+                curveToRelative(0.39f, 0.39f, 1.02f, 0.39f, 1.41f, 0.0f)
+                lineToRelative(1.41f, -1.41f)
+                curveToRelative(0.39f, -0.39f, 0.39f, -1.02f, 0.0f, -1.41f)
+                curveToRelative(-0.39f, -0.39f, -1.02f, -0.39f, -1.41f, 0.0f)
+                close()
+                moveTo(18.36f, 5.64f)
+                curveToRelative(0.39f, -0.39f, 0.39f, -1.02f, 0.0f, -1.41f)
+                curveToRelative(-0.39f, -0.39f, -1.02f, -0.39f, -1.41f, 0.0f)
+                lineToRelative(-1.41f, 1.41f)
+                curveToRelative(-0.39f, 0.39f, -0.39f, 1.02f, 0.0f, 1.41f)
+                curveToRelative(0.39f, 0.39f, 1.02f, 0.39f, 1.41f, 0.0f)
+                lineToRelative(1.41f, -1.41f)
+                close()
+            }
+        }.build()
+    }
+
+    // Bolt / Lightning Fasting Energy Icon
+    val Bolt: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Bolt",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(11.0f, 21.0f)
+                curveToRelative(-0.45f, 0.0f, -0.83f, -0.3f, -0.95f, -0.74f)
+                lineToRelative(-1.5f, -5.51f)
+                horizontalLineTo(5.5f)
+                curveToRelative(-0.72f, 0.0f, -1.18f, -0.75f, -0.86f, -1.39f)
+                lineToRelative(7.0f, -11.0f)
+                curveToRelative(0.36f, -0.56f, 1.19f, -0.5f, 1.46f, 0.12f)
+                curveToRelative(0.12f, 0.28f, 0.1f, 0.6f, -0.05f, 0.86f)
+                lineTo(11.5f, 8.75f)
+                horizontalLineToRelative(4.0f)
+                curveToRelative(0.72f, 0.0f, 1.18f, 0.75f, 0.86f, 1.39f)
+                lineToRelative(-4.5f, 10.5f)
+                curveToRelative(-0.19f, 0.23f, -0.49f, 0.36f, -0.86f, 0.36f)
+                close()
+            }
+        }.build()
+    }
+
+    // Coffee / Tea Drinks Icon
+    val Coffee: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Coffee",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(2.0f, 19.0f)
+                horizontalLineToRelative(18.0f)
+                verticalLineToRelative(2.0f)
+                horizontalLineTo(2.0f)
+                close()
+                moveTo(20.0f, 3.0f)
+                horizontalLineTo(4.0f)
+                verticalLineToRelative(10.0f)
+                curveToRelative(0.0f, 2.21f, 1.79f, 4.0f, 4.0f, 4.0f)
+                horizontalLineToRelative(6.0f)
+                curveToRelative(2.21f, 0.0f, 4.0f, -1.79f, 4.0f, -4.0f)
+                verticalLineToRelative(-3.0f)
+                horizontalLineToRelative(2.0f)
+                curveToRelative(1.1f, 0.0f, 2.0f, -0.9f, 2.0f, -2.0f)
+                verticalLineTo(5.0f)
+                curveToRelative(0.0f, -1.1f, -0.9f, -2.0f, -2.0f, -2.0f)
+                close()
+                moveTo(18.0f, 8.0f)
+                verticalLineTo(5.0f)
+                horizontalLineToRelative(2.0f)
+                verticalLineToRelative(3.0f)
+                horizontalLineToRelative(-2.0f)
+                close()
+            }
+        }.build()
+    }
+
+    // Lifebuoy / Hunger SOS Icon
+    val Lifebuoy: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Lifebuoy",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(12.0f, 2.0f)
+                curveTo(6.48f, 2.0f, 2.0f, 6.48f, 2.0f, 12.0f)
+                reflectiveCurveToRelative(4.48f, 10.0f, 10.0f, 10.0f)
+                reflectiveCurveToRelative(10.0f, -4.48f, 10.0f, -10.0f)
+                reflectiveCurveTo(17.52f, 2.0f, 12.0f, 2.0f)
+                close()
+                moveTo(12.0f, 16.5f)
+                curveToRelative(-2.49f, 0.0f, -4.5f, -2.01f, -4.5f, -4.5f)
+                reflectiveCurveToRelative(2.01f, -4.5f, 4.5f, -4.5f)
+                reflectiveCurveToRelative(4.5f, 2.01f, 4.5f, 4.5f)
+                reflectiveCurveToRelative(-2.01f, 4.5f, -4.5f, 4.5f)
+                close()
+                moveTo(17.72f, 7.69f)
+                lineToRelative(1.88f, -1.88f)
+                curveToRelative(1.15f, 1.48f, 1.89f, 3.29f, 2.06f, 5.27f)
+                horizontalLineToRelative(-2.67f)
+                curveToRelative(-0.17f, -1.26f, -0.63f, -2.42f, -1.27f, -3.39f)
+                close()
+                moveTo(6.28f, 7.69f)
+                curveTo(5.64f, 8.66f, 5.18f, 9.82f, 5.01f, 11.08f)
+                horizontalLineTo(2.34f)
+                curveToRelative(0.17f, -1.98f, 0.91f, -3.79f, 2.06f, -5.27f)
+                lineToRelative(1.88f, 1.88f)
+                close()
+                moveTo(6.28f, 16.31f)
+                lineToRelative(-1.88f, 1.88f)
+                curveToRelative(-1.15f, -1.48f, -1.89f, -3.29f, -2.06f, -5.27f)
+                horizontalLineToRelative(2.67f)
+                curveToRelative(0.17f, 1.26f, 0.63f, 2.42f, 1.27f, 3.39f)
+                close()
+                moveTo(17.72f, 16.31f)
+                curveToRelative(0.64f, -0.97f, 1.1f, -2.13f, 1.27f, -3.39f)
+                horizontalLineToRelative(2.67f)
+                curveToRelative(-0.17f, 1.98f, -0.91f, 3.79f, -2.06f, 5.27f)
+                lineToRelative(-1.88f, -1.88f)
+                close()
+            }
+        }.build()
+    }
+
+    // TrendingUp Icon
+    val TrendingUp: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "TrendingUp",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(16.0f, 6.0f)
+                lineToRelative(2.29f, 2.29f)
+                lineToRelative(-4.88f, 4.88f)
+                lineToRelative(-4.0f, -4.0f)
+                lineTo(2.0f, 16.59f)
+                lineTo(3.41f, 18.0f)
+                lineToRelative(6.0f, -6.0f)
+                lineToRelative(4.0f, 4.0f)
+                lineToRelative(6.3f, -6.29f)
+                lineTo(22.0f, 12.0f)
+                verticalLineTo(6.0f)
+                horizontalLineToRelative(-6.0f)
+                close()
+            }
+        }.build()
+    }
+
+    // Sparkles / Magic / Cellular Icon
+    val Sparkles: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Sparkles",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(12.0f, 2.0f)
+                lineToRelative(2.0f, 5.0f)
+                lineToRelative(5.0f, 2.0f)
+                lineToRelative(-5.0f, 2.0f)
+                lineToRelative(-2.0f, 5.0f)
+                lineToRelative(-2.0f, -5.0f)
+                lineToRelative(-5.0f, -2.0f)
+                lineToRelative(5.0f, -2.0f)
+                close()
+                moveTo(19.0f, 15.0f)
+                lineToRelative(1.25f, 2.5f)
+                lineToRelative(2.5f, 1.25f)
+                lineToRelative(-2.5f, 1.25f)
+                lineToRelative(-1.25f, 2.5f)
+                lineToRelative(-1.25f, -2.5f)
+                lineToRelative(-2.5f, -1.25f)
+                lineToRelative(2.5f, -1.25f)
+                close()
+            }
+        }.build()
+    }
 }

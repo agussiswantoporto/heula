@@ -104,6 +104,49 @@ data class Strings(
     val healthConnectConnectBtn: String,
     val healthConnectSyncBtn: String,
     val healthConnectDesktopNote: String,
+
+    // Dynamic Island / Live Activity
+    val liveActivityFastActive: String,
+    val liveActivityElapsed: String,
+    val liveActivityTarget: String,
+    val liveActivityNextStage: String,
+    val liveActivityOpenTimer: String,
+    val liveActivitySos: String,
+    val liveActivityMetabolism: String,
+
+    // Metabolic Journal & Allowed Drinks
+    val metabolismJournalTitle: String,
+    val metabolismJournalSubtitle: String,
+    val metabolismTabTimeline: String,
+    val metabolismTabDrinks: String,
+    val drinksGuideTitle: String,
+    val drinksGuideSubtitle: String,
+
+    // Hunger SOS Companion
+    val hungerSosButton: String,
+    val hungerSosTitle: String,
+    val hungerSosSubtitle: String,
+    val hungerSosBreatheTitle: String,
+    val hungerSosBreatheDesc: String,
+    val hungerSosTip1Title: String,
+    val hungerSosTip1Desc: String,
+    val hungerSosTip2Title: String,
+    val hungerSosTip2Desc: String,
+    val hungerSosTip3Title: String,
+    val hungerSosTip3Desc: String,
+    val hungerSosStayStrong: String,
+
+    // Circadian Planner & Trends
+    val circadianTitle: String,
+    val circadianSubtitle: String,
+    val circadianSleepWindow: String,
+    val circadianEatingWindow: String,
+    val circadianFastingAsleep: String,
+    val circadianFastingMorning: String,
+    val trendsSectionTitle: String,
+    val trendsAvgDuration: String,
+    val trendsGoldenHour: String,
+    val trendsFatBurnHours: String,
 )
 
 val IndonesianStrings = Strings(
@@ -201,6 +244,49 @@ val IndonesianStrings = Strings(
     healthConnectConnectBtn = "Hubungkan ke Health",
     healthConnectSyncBtn = "Sinkronkan Sekarang",
     healthConnectDesktopNote = "Fitur Apple Health & Health Connect aktif otomatis saat digunakan di aplikasi ponsel (iOS / Android).",
+
+    // Dynamic Island / Live Activity
+    liveActivityFastActive = "Lagi Puasa",
+    liveActivityElapsed = "Durasi",
+    liveActivityTarget = "Target",
+    liveActivityNextStage = "Menuju",
+    liveActivityOpenTimer = "Buka Timer",
+    liveActivitySos = "Lapar SOS",
+    liveActivityMetabolism = "Metabolisme",
+
+    // Metabolic Journal & Allowed Drinks
+    metabolismJournalTitle = "Jurnal Metabolisme Tubuh",
+    metabolismJournalSubtitle = "Intip kerja hebat sel dan organ tubuhmu di tiap fase puasa!",
+    metabolismTabTimeline = "Timeline Sel",
+    metabolismTabDrinks = "Boleh Minum Apa?",
+    drinksGuideTitle = "Panduan Minuman Aman Puasa",
+    drinksGuideSubtitle = "Tetap terhidrasi dan bertenaga tanpa memicu lonjakan insulin atau membatalkan puasa.",
+
+    // Hunger SOS Companion
+    hungerSosButton = "Lagi Lapar Banget? (SOS)",
+    hungerSosTitle = "Pertolongan Pertama Lapar 🚨",
+    hungerSosSubtitle = "Rasa lapar itu cuma gelombang sementara, bukan sinyal darurat!",
+    hungerSosBreatheTitle = "Trik 5 Menit Napas Rileks 4-7-8",
+    hungerSosBreatheDesc = "Tarik napas 4 detik, tahan 7 detik, buang 8 detik. Gelombang hormon ghrelin bakal reda dalam hitungan menit.",
+    hungerSosTip1Title = "Teguk Segelas Air Dingin",
+    hungerSosTip1Desc = "Otak kita sering salah nebak haus sebagai lapar. Minum segelas air putih pelan-pelan.",
+    hungerSosTip2Title = "Sejumput Garam di Lidah",
+    hungerSosTip2Desc = "Ambil sejumput garam dapur/laut di lidah lalu minum air. Menstabilkan elektrolit instan dengan 0 kalori.",
+    hungerSosTip3Title = "Alihkan Pikiran 10 Menit",
+    hungerSosTip3Desc = "Jalan kaki santai, cuci muka pake air dingin, atau dengerin musik. Puncak hormon lapar biasanya cuma 15-20 menit.",
+    hungerSosStayStrong = "Gua Kuat, Lanjut Puasa!",
+
+    // Circadian Planner & Trends
+    circadianTitle = "Jadwal Puasa Sirkadian",
+    circadianSubtitle = "Manfaatin waktu tidur malam biar puasa 16 jam kerasa super enteng tanpa nahan lapar!",
+    circadianSleepWindow = "Jam Tidur Kamu",
+    circadianEatingWindow = "Jendela Makan Siang & Sore",
+    circadianFastingAsleep = "Puasa Sambil Tidur (8 Jam Otomatis)",
+    circadianFastingMorning = "Fase Ketosis & Fokus Pagi",
+    trendsSectionTitle = "Tren & Highlight Cerdas",
+    trendsAvgDuration = "Rerata Durasi",
+    trendsGoldenHour = "Jam Mulai Favorit",
+    trendsFatBurnHours = "Total Jam Bakar Lemak",
 )
 
 val EnglishStrings = Strings(
@@ -298,6 +384,49 @@ val EnglishStrings = Strings(
     healthConnectConnectBtn = "Connect to Health",
     healthConnectSyncBtn = "Sync Health Now",
     healthConnectDesktopNote = "Apple Health & Health Connect integrations are active on mobile devices (iOS / Android).",
+
+    // Dynamic Island / Live Activity
+    liveActivityFastActive = "Fasting Active",
+    liveActivityElapsed = "Elapsed",
+    liveActivityTarget = "Target",
+    liveActivityNextStage = "Towards",
+    liveActivityOpenTimer = "Open Timer",
+    liveActivitySos = "Hunger SOS",
+    liveActivityMetabolism = "Metabolism",
+
+    // Metabolic Journal & Allowed Drinks
+    metabolismJournalTitle = "Body Metabolism Journal",
+    metabolismJournalSubtitle = "Track cellular milestones and biological shifts through each fasting stage!",
+    metabolismTabTimeline = "Cell Timeline",
+    metabolismTabDrinks = "Allowed Drinks",
+    drinksGuideTitle = "Safe Fasting Drinks Guide",
+    drinksGuideSubtitle = "Stay hydrated and energized with 0 calories and zero insulin spikes.",
+
+    // Hunger SOS Companion
+    hungerSosButton = "Feeling Hungry? (SOS)",
+    hungerSosTitle = "Hunger SOS First Aid 🚨",
+    hungerSosSubtitle = "Hunger is just a passing wave, not an emergency!",
+    hungerSosBreatheTitle = "5-Minute Relaxing 4-7-8 Breathing",
+    hungerSosBreatheDesc = "Inhale 4s, hold 7s, exhale 8s. Helps your nervous system ease the ghrelin hormone wave.",
+    hungerSosTip1Title = "Sip a Cold Glass of Water",
+    hungerSosTip1Desc = "The brain frequently mistakes thirst for hunger. Drink a large glass of water slowly.",
+    hungerSosTip2Title = "Pinch of Salt on Tongue",
+    hungerSosTip2Desc = "Put a pinch of salt on your tongue, then drink water. Stabilizes electrolytes immediately with 0 calories.",
+    hungerSosTip3Title = "Distract Your Mind for 10 Mins",
+    hungerSosTip3Desc = "Take a short walk, wash your face, or listen to music. Hunger peaks typically dissolve in 15-20 minutes.",
+    hungerSosStayStrong = "I'm Strong, Keep Fasting!",
+
+    // Circadian Planner & Trends
+    circadianTitle = "Circadian Fasting Planner",
+    circadianSubtitle = "Leverage your overnight sleep hours so a 16-hour fast feels effortless!",
+    circadianSleepWindow = "Your Sleep Window",
+    circadianEatingWindow = "Daytime Eating Window",
+    circadianFastingAsleep = "Fasting While Asleep (8h Effortless)",
+    circadianFastingMorning = "Morning Ketosis & Peak Focus",
+    trendsSectionTitle = "Smart Trends & Highlights",
+    trendsAvgDuration = "Average Duration",
+    trendsGoldenHour = "Favorite Start Time",
+    trendsFatBurnHours = "Active Fat Burn Hours",
 )
 
 fun getStrings(language: AppLanguage): Strings = when (language) {

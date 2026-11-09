@@ -31,6 +31,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import id.heula.domain.model.ScreenTab
+import id.heula.presentation.component.hungersos.HungerSosModal
+import id.heula.presentation.component.liveactivity.DynamicIslandPill
+import id.heula.presentation.component.metabolism.MetabolismJournalModal
+import id.heula.domain.model.stageForElapsed
+import kotlinx.coroutines.delay
+import kotlinx.datetime.Clock
 import id.heula.presentation.screen.history.HistoryScreen
 import id.heula.presentation.screen.home.HomeScreen
 import id.heula.presentation.screen.onboarding.OnboardingScreen
@@ -49,10 +55,22 @@ fun App(
     enableSplashScreen: Boolean = true,
 ) {
     val settings by store.settings.collectAsState()
+    val activeFast by store.activeFast.collectAsState()
     val s = getStrings(settings.language)
     var currentTab by remember { mutableStateOf(settings.lastTab) }
     var isOnboardingMode by remember(settings.onboarded) { mutableStateOf(!settings.onboarded) }
     var isSplashVisible by remember { mutableStateOf(enableSplashScreen) }
+
+    var currentTimeMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
+    var showHungerSosModal by remember { mutableStateOf(false) }
+    var showMetabolismModal by remember { mutableStateOf(false) }
+
+    LaunchedEffect(activeFast) {
+        while (activeFast != null) {
+            currentTimeMs = Clock.System.now().toEpochMilliseconds()
+            delay(1000)
+        }
+    }
 
     LaunchedEffect(settings.lastTab) {
         currentTab = settings.lastTab
@@ -169,13 +187,35 @@ fun App(
                                     .weight(1f)
                                     .fillMaxHeight()
                             ) {
-                                when (currentTab) {
-                                    ScreenTab.HOME -> HomeScreen(store = store)
-                                    ScreenTab.HISTORY -> HistoryScreen(store = store)
-                                    ScreenTab.STATS -> StatsScreen(store = store)
-                                    ScreenTab.PROFILE -> ProfileScreen(
-                                        store = store,
-                                        onResetOnboarding = { isOnboardingMode = true }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .then(if (activeFast != null) Modifier.padding(top = 48.dp) else Modifier)
+                                ) {
+                                    when (currentTab) {
+                                        ScreenTab.HOME -> HomeScreen(store = store)
+                                        ScreenTab.HISTORY -> HistoryScreen(store = store)
+                                        ScreenTab.STATS -> StatsScreen(store = store)
+                                        ScreenTab.PROFILE -> ProfileScreen(
+                                            store = store,
+                                            onResetOnboarding = { isOnboardingMode = true }
+                                        )
+                                    }
+                                }
+
+                                if (activeFast != null) {
+                                    DynamicIslandPill(
+                                        activeFast = activeFast!!,
+                                        currentTimeMs = currentTimeMs,
+                                        currentTab = currentTab,
+                                        s = s,
+                                        onNavigateToHome = {
+                                            currentTab = ScreenTab.HOME
+                                            store.selectTab(ScreenTab.HOME)
+                                        },
+                                        onOpenHungerSos = { showHungerSosModal = true },
+                                        onOpenMetabolism = { showMetabolismModal = true },
+                                        modifier = Modifier.align(Alignment.TopCenter),
                                     )
                                 }
                             }
@@ -187,6 +227,7 @@ fun App(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(bottom = 86.dp)
+                                    .then(if (activeFast != null) Modifier.padding(top = 46.dp) else Modifier)
                             ) {
                                 when (currentTab) {
                                     ScreenTab.HOME -> HomeScreen(store = store)
@@ -199,6 +240,22 @@ fun App(
                                 }
                             }
 
+                            if (activeFast != null) {
+                                DynamicIslandPill(
+                                    activeFast = activeFast!!,
+                                    currentTimeMs = currentTimeMs,
+                                    currentTab = currentTab,
+                                    s = s,
+                                    onNavigateToHome = {
+                                        currentTab = ScreenTab.HOME
+                                        store.selectTab(ScreenTab.HOME)
+                                    },
+                                    onOpenHungerSos = { showHungerSosModal = true },
+                                    onOpenMetabolism = { showMetabolismModal = true },
+                                    modifier = Modifier.align(Alignment.TopCenter),
+                                )
+                            }
+
                             IosFloatingPillNavBar(
                                 currentTab = currentTab,
                                 onTabSelected = {
@@ -209,6 +266,26 @@ fun App(
                                 modifier = Modifier.align(Alignment.BottomCenter),
                             )
                         }
+                    }
+
+                    if (showHungerSosModal) {
+                        HungerSosModal(
+                            activeFast = activeFast,
+                            currentTimeMs = currentTimeMs,
+                            s = s,
+                            onDismiss = { showHungerSosModal = false },
+                        )
+                    }
+
+                    if (showMetabolismModal && activeFast != null) {
+                        val elapsedMs = (currentTimeMs - activeFast!!.startMs).coerceAtLeast(0L)
+                        val stage = stageForElapsed(elapsedMs)
+                        MetabolismJournalModal(
+                            currentStage = stage,
+                            elapsedMs = elapsedMs,
+                            s = s,
+                            onDismiss = { showMetabolismModal = false },
+                        )
                     }
                 }
             }
