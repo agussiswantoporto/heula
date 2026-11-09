@@ -105,15 +105,6 @@ data class Strings(
     val healthConnectSyncBtn: String,
     val healthConnectDesktopNote: String,
 
-    // Dynamic Island / Live Activity
-    val liveActivityFastActive: String,
-    val liveActivityElapsed: String,
-    val liveActivityTarget: String,
-    val liveActivityNextStage: String,
-    val liveActivityOpenTimer: String,
-    val liveActivitySos: String,
-    val liveActivityMetabolism: String,
-
     // Metabolic Journal & Allowed Drinks
     val metabolismJournalTitle: String,
     val metabolismJournalSubtitle: String,
@@ -245,15 +236,6 @@ val IndonesianStrings = Strings(
     healthConnectSyncBtn = "Sinkronkan Sekarang",
     healthConnectDesktopNote = "Fitur Apple Health & Health Connect aktif otomatis saat digunakan di aplikasi ponsel (iOS / Android).",
 
-    // Dynamic Island / Live Activity
-    liveActivityFastActive = "Lagi Puasa",
-    liveActivityElapsed = "Durasi",
-    liveActivityTarget = "Target",
-    liveActivityNextStage = "Menuju",
-    liveActivityOpenTimer = "Buka Timer",
-    liveActivitySos = "Lapar SOS",
-    liveActivityMetabolism = "Metabolisme",
-
     // Metabolic Journal & Allowed Drinks
     metabolismJournalTitle = "Jurnal Metabolisme Tubuh",
     metabolismJournalSubtitle = "Intip kerja hebat sel dan organ tubuhmu di tiap fase puasa!",
@@ -384,15 +366,6 @@ val EnglishStrings = Strings(
     healthConnectConnectBtn = "Connect to Health",
     healthConnectSyncBtn = "Sync Health Now",
     healthConnectDesktopNote = "Apple Health & Health Connect integrations are active on mobile devices (iOS / Android).",
-
-    // Dynamic Island / Live Activity
-    liveActivityFastActive = "Fasting Active",
-    liveActivityElapsed = "Elapsed",
-    liveActivityTarget = "Target",
-    liveActivityNextStage = "Towards",
-    liveActivityOpenTimer = "Open Timer",
-    liveActivitySos = "Hunger SOS",
-    liveActivityMetabolism = "Metabolism",
 
     // Metabolic Journal & Allowed Drinks
     metabolismJournalTitle = "Body Metabolism Journal",
