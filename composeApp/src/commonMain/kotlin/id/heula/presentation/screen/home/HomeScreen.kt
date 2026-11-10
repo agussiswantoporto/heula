@@ -172,14 +172,6 @@ fun HomeScreen(
                         s = s,
                     )
 
-                    CircadianPlannerCard(
-                        sleepStartHour = settings.sleepStartHour,
-                        sleepEndHour = settings.sleepEndHour,
-                        targetFastingHours = if (activeFast != null) activeFast!!.targetHours else (METHODS[settings.chosenMethod]?.fastingHours ?: 16.0),
-                        s = s,
-                        onUpdateSleepSchedule = { start, end -> store.updateSleepSchedule(start, end) },
-                    )
-
                     MethodCard(
                         methodId = settings.chosenMethod,
                         customHours = settings.customFastingHours,
@@ -246,14 +238,6 @@ fun HomeScreen(
                     isEatingWindow = isEatingWindow,
                     eatingHours = eatingHours,
                     s = s,
-                )
-
-                CircadianPlannerCard(
-                    sleepStartHour = settings.sleepStartHour,
-                    sleepEndHour = settings.sleepEndHour,
-                    targetFastingHours = if (activeFast != null) activeFast!!.targetHours else (METHODS[settings.chosenMethod]?.fastingHours ?: 16.0),
-                    s = s,
-                    onUpdateSleepSchedule = { start, end -> store.updateSleepSchedule(start, end) },
                 )
 
                 MethodCard(

@@ -127,13 +127,7 @@ data class Strings(
     val hungerSosTip3Desc: String,
     val hungerSosStayStrong: String,
 
-    // Circadian Planner & Trends
-    val circadianTitle: String,
-    val circadianSubtitle: String,
-    val circadianSleepWindow: String,
-    val circadianEatingWindow: String,
-    val circadianFastingAsleep: String,
-    val circadianFastingMorning: String,
+    // Smart Trends
     val trendsSectionTitle: String,
     val trendsAvgDuration: String,
     val trendsGoldenHour: String,
@@ -258,13 +252,7 @@ val IndonesianStrings = Strings(
     hungerSosTip3Desc = "Jalan kaki santai, cuci muka pake air dingin, atau dengerin musik. Puncak hormon lapar biasanya cuma 15-20 menit.",
     hungerSosStayStrong = "Gua Kuat, Lanjut Puasa!",
 
-    // Circadian Planner & Trends
-    circadianTitle = "Jadwal Puasa Sirkadian",
-    circadianSubtitle = "Manfaatin waktu tidur malam biar puasa 16 jam kerasa super enteng tanpa nahan lapar!",
-    circadianSleepWindow = "Jam Tidur Kamu",
-    circadianEatingWindow = "Jendela Makan Siang & Sore",
-    circadianFastingAsleep = "Puasa Sambil Tidur (8 Jam Otomatis)",
-    circadianFastingMorning = "Fase Ketosis & Fokus Pagi",
+    // Smart Trends
     trendsSectionTitle = "Tren & Highlight Cerdas",
     trendsAvgDuration = "Rerata Durasi",
     trendsGoldenHour = "Jam Mulai Favorit",
@@ -389,13 +377,7 @@ val EnglishStrings = Strings(
     hungerSosTip3Desc = "Take a short walk, wash your face, or listen to music. Hunger peaks typically dissolve in 15-20 minutes.",
     hungerSosStayStrong = "I'm Strong, Keep Fasting!",
 
-    // Circadian Planner & Trends
-    circadianTitle = "Circadian Fasting Planner",
-    circadianSubtitle = "Leverage your overnight sleep hours so a 16-hour fast feels effortless!",
-    circadianSleepWindow = "Your Sleep Window",
-    circadianEatingWindow = "Daytime Eating Window",
-    circadianFastingAsleep = "Fasting While Asleep (8h Effortless)",
-    circadianFastingMorning = "Morning Ketosis & Peak Focus",
+    // Smart Trends
     trendsSectionTitle = "Smart Trends & Highlights",
     trendsAvgDuration = "Average Duration",
     trendsGoldenHour = "Favorite Start Time",

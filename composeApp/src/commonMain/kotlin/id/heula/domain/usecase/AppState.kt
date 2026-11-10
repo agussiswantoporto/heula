@@ -19,8 +19,6 @@ data class AppSettings(
     val waterDateEpochDay: Long = 0,
     val language: AppLanguage = AppLanguage.INDONESIAN,
     val lastTab: ScreenTab = ScreenTab.HOME,
-    val sleepStartHour: Int = 23,
-    val sleepEndHour: Int = 7,
 )
 
 @Serializable
