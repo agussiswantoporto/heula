@@ -128,6 +128,14 @@ data class Strings(
     val stravaConfigModalTitle: String,
     val stravaConnecting: String,
     val stravaDisconnectConfirm: String,
+    val stravaLoginWithStrava: String,
+    val stravaOAuthDesc: String,
+    val stravaClientIdLabel: String,
+    val stravaClientSecretLabel: String,
+    val stravaApiSettingsTitle: String,
+    val stravaEnterCodeLabel: String,
+    val stravaExchangeCodeBtn: String,
+    val stravaSyncedToGoogleBadge: String,
 
     // Metabolic Journal & Allowed Drinks
     val metabolismJournalTitle: String,
@@ -277,6 +285,14 @@ val IndonesianStrings = Strings(
     stravaConfigModalTitle = "Konfigurasi Strava",
     stravaConnecting = "Menghubungkan...",
     stravaDisconnectConfirm = "Yakin ingin memutuskan koneksi akun Strava?",
+    stravaLoginWithStrava = "Login dengan Strava",
+    stravaOAuthDesc = "Otorisasi akunmu melalui halaman resmi Strava (tersedia opsi login Google, Apple, atau Email).",
+    stravaClientIdLabel = "Client ID Strava",
+    stravaClientSecretLabel = "Client Secret Strava",
+    stravaApiSettingsTitle = "Pengaturan Kredensial API Strava",
+    stravaEnterCodeLabel = "Kode Otorisasi (Dari Redirect)",
+    stravaExchangeCodeBtn = "Tukarkan Kode & Sambungkan",
+    stravaSyncedToGoogleBadge = "Tersimpan di Cloud Sync Google",
 
     // Metabolic Journal & Allowed Drinks
     metabolismJournalTitle = "Jurnal Metabolisme Tubuh",
@@ -426,6 +442,14 @@ val EnglishStrings = Strings(
     stravaConfigModalTitle = "Strava Integration",
     stravaConnecting = "Connecting...",
     stravaDisconnectConfirm = "Are you sure you want to disconnect Strava?",
+    stravaLoginWithStrava = "Connect with Strava",
+    stravaOAuthDesc = "Authorize Heula on Strava's official consent page (options to log in with Google, Apple, or Email).",
+    stravaClientIdLabel = "Strava Client ID",
+    stravaClientSecretLabel = "Strava Client Secret",
+    stravaApiSettingsTitle = "Strava API App Credentials",
+    stravaEnterCodeLabel = "Authorization Code (From Redirect)",
+    stravaExchangeCodeBtn = "Exchange Code & Connect",
+    stravaSyncedToGoogleBadge = "Saved in Google Cloud Sync",
 
     // Metabolic Journal & Allowed Drinks
     metabolismJournalTitle = "Body Metabolism Journal",

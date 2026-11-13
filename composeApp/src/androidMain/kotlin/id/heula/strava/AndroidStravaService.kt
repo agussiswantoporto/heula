@@ -16,10 +16,131 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 
 class AndroidStravaService : StravaService {
 
     private val json = Json { ignoreUnknownKeys = true }
+
+    override fun getAuthorizationUrl(clientId: String, redirectUri: String): String {
+        val encodedRedirect = URLEncoder.encode(redirectUri, "UTF-8")
+        return "https://www.strava.com/oauth/authorize?client_id=$clientId&response_type=code&redirect_uri=$encodedRedirect&approval_prompt=auto&scope=activity:write,read"
+    }
+
+    override suspend fun exchangeAuthorizationCode(
+        clientId: String,
+        clientSecret: String,
+        code: String,
+    ): Result<StravaConfig> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("https://www.strava.com/oauth/token")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            val params = "client_id=" + URLEncoder.encode(clientId, "UTF-8") +
+                "&client_secret=" + URLEncoder.encode(clientSecret, "UTF-8") +
+                "&code=" + URLEncoder.encode(code, "UTF-8") +
+                "&grant_type=authorization_code"
+
+            conn.outputStream.use { it.write(params.toByteArray(Charsets.UTF_8)) }
+
+            val responseCode = conn.responseCode
+            if (responseCode in 200..299) {
+                val body = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                val root = json.parseToJsonElement(body).jsonObject
+
+                val accessToken = root["access_token"]?.jsonPrimitive?.content ?: ""
+                val refreshToken = root["refresh_token"]?.jsonPrimitive?.content ?: ""
+                val expiresAt = root["expires_at"]?.jsonPrimitive?.longOrNull ?: 0L
+
+                val athleteObj = root["athlete"]?.jsonObject
+                val athleteId = athleteObj?.get("id")?.jsonPrimitive?.content ?: ""
+                val firstname = athleteObj?.get("firstname")?.jsonPrimitive?.content ?: ""
+                val lastname = athleteObj?.get("lastname")?.jsonPrimitive?.content ?: ""
+                val username = athleteObj?.get("username")?.jsonPrimitive?.content ?: ""
+                val profile = athleteObj?.get("profile")?.jsonPrimitive?.content ?: ""
+                val fullName = when {
+                    firstname.isNotBlank() && lastname.isNotBlank() -> "$firstname $lastname"
+                    firstname.isNotBlank() -> firstname
+                    username.isNotBlank() -> username
+                    else -> "Atlet Strava"
+                }
+
+                Result.success(
+                    StravaConfig(
+                        isConnected = true,
+                        accessToken = accessToken,
+                        refreshToken = refreshToken,
+                        tokenExpiresAt = expiresAt,
+                        athleteId = athleteId,
+                        athleteName = fullName,
+                        athleteUsername = username,
+                        athleteProfileUrl = profile,
+                        clientId = clientId,
+                        clientSecret = clientSecret,
+                        autoPostOnFinish = true,
+                    )
+                )
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "HTTP $responseCode"
+                Result.failure(Exception("Gagal menukar kode login Strava: $err"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun refreshToken(config: StravaConfig): Result<StravaConfig> = withContext(Dispatchers.IO) {
+        try {
+            if (config.refreshToken.isBlank() || config.clientId.isBlank() || config.clientSecret.isBlank()) {
+                return@withContext Result.failure(Exception("Data refresh token Strava tidak lengkap"))
+            }
+
+            val url = URL("https://www.strava.com/oauth/token")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            val params = "client_id=" + URLEncoder.encode(config.clientId, "UTF-8") +
+                "&client_secret=" + URLEncoder.encode(config.clientSecret, "UTF-8") +
+                "&refresh_token=" + URLEncoder.encode(config.refreshToken, "UTF-8") +
+                "&grant_type=refresh_token"
+
+            conn.outputStream.use { it.write(params.toByteArray(Charsets.UTF_8)) }
+
+            val responseCode = conn.responseCode
+            if (responseCode in 200..299) {
+                val body = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                val root = json.parseToJsonElement(body).jsonObject
+
+                val newAccessToken = root["access_token"]?.jsonPrimitive?.content ?: config.accessToken
+                val newRefreshToken = root["refresh_token"]?.jsonPrimitive?.content ?: config.refreshToken
+                val newExpiresAt = root["expires_at"]?.jsonPrimitive?.longOrNull ?: config.tokenExpiresAt
+
+                Result.success(
+                    config.copy(
+                        accessToken = newAccessToken,
+                        refreshToken = newRefreshToken,
+                        tokenExpiresAt = newExpiresAt,
+                    )
+                )
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "HTTP $responseCode"
+                Result.failure(Exception("Gagal memperbarui token Strava: $err"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     override suspend fun verifyToken(accessToken: String): Result<StravaAthlete> = withContext(Dispatchers.IO) {
         try {
@@ -66,7 +187,17 @@ class AndroidStravaService : StravaService {
         session: FastingSession,
     ): Result<StravaActivityResult> = withContext(Dispatchers.IO) {
         try {
-            val token = config.accessToken.trim()
+            // Check if token needs refresh
+            val effectiveConfig = if (config.tokenExpiresAt > 0 &&
+                (System.currentTimeMillis() / 1000L >= config.tokenExpiresAt - 300) &&
+                config.refreshToken.isNotBlank()
+            ) {
+                refreshToken(config).getOrDefault(config)
+            } else {
+                config
+            }
+
+            val token = effectiveConfig.accessToken.trim()
             if (token.isBlank()) {
                 return@withContext Result.failure(Exception("Access token Strava belum diatur"))
             }
@@ -76,7 +207,7 @@ class AndroidStravaService : StravaService {
             val elapsedSec = maxOf(60, (session.durationMs / 1000L).toInt())
             val status = if (session.completed) "Target Tuntas! 🎉" else "Disudahi Lebih Awal"
             val moodText = session.mood?.let { "\n⚡ Mood: ${it.name}" } ?: ""
-            val noteText = if (!session.note.isNullOrBlank()) "\n📝 Catatan: ${session.note}" else ""
+            val noteText = if (!session.note.isNullOrBlank()) "\n📝 Catatan Buka Puasa: ${session.note}" else ""
 
             val title = "Heula Fasting: $durHours Jam $durMins Mnt (${session.planLabel})"
             val description = """
@@ -88,7 +219,7 @@ class AndroidStravaService : StravaService {
             """.trimIndent()
 
             val isoStart = Instant.fromEpochMilliseconds(session.startMs).toString()
-            val activityType = config.defaultActivityType.ifBlank { "Workout" }
+            val activityType = effectiveConfig.defaultActivityType.ifBlank { "Workout" }
 
             val url = URL("https://www.strava.com/api/v3/activities")
             val conn = (url.openConnection() as HttpURLConnection).apply {

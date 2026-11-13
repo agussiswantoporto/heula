@@ -9,9 +9,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
@@ -25,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -708,7 +713,13 @@ fun ProfileScreen(
             config = stravaConfig,
             language = settings.language,
             s = s,
-            onConnect = { token, onRes ->
+            onGetAuthUrl = { clientId, redirectUri ->
+                store.getStravaAuthUrl(clientId, redirectUri)
+            },
+            onExchangeCode = { clientId, clientSecret, code, onRes ->
+                store.exchangeStravaCode(clientId, clientSecret, code, onRes)
+            },
+            onConnectWithToken = { token, onRes ->
                 store.verifyAndConnectStrava(token, onRes)
             },
             onDisconnect = {
@@ -1002,15 +1013,24 @@ private fun StravaConfigModal(
     config: StravaConfig,
     language: AppLanguage,
     s: Strings,
-    onConnect: (String, (Result<StravaAthlete>) -> Unit) -> Unit,
+    onGetAuthUrl: (String, String) -> String,
+    onExchangeCode: (String, String, String, (Result<StravaConfig>) -> Unit) -> Unit,
+    onConnectWithToken: (String, (Result<StravaAthlete>) -> Unit) -> Unit,
     onDisconnect: () -> Unit,
     onUpdateConfig: (StravaConfig) -> Unit,
     onTestPost: ((Result<StravaActivityResult>) -> Unit) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val uriHandler = LocalUriHandler.current
+
+    var clientIdInput by remember { mutableStateOf(config.clientId.ifBlank { "144820" }) }
+    var clientSecretInput by remember { mutableStateOf(config.clientSecret) }
+    var codeInput by remember { mutableStateOf("") }
     var tokenInput by remember { mutableStateOf(config.accessToken) }
+
     var isConnecting by remember { mutableStateOf(false) }
     var isTestingPost by remember { mutableStateOf(false) }
+    var showApiSettings by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
     var showDisconnectConfirm by remember { mutableStateOf(false) }
@@ -1067,49 +1087,78 @@ private fun StravaConfigModal(
                         border = BorderStroke(1.dp, Color(0xFF34C759).copy(alpha = 0.25f)),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFFC4C02)),
-                                contentAlignment = Alignment.Center,
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                val initial = config.athleteName.firstOrNull()?.uppercase() ?: "S"
-                                Text(
-                                    text = initial,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFFC4C02)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    val initial = config.athleteName.firstOrNull()?.uppercase() ?: "S"
+                                    Text(
+                                        text = initial,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = config.athleteName.ifBlank { "Atlet Strava" },
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                    )
+                                    Text(
+                                        text = if (config.athleteUsername.isNotBlank()) "@${config.athleteUsername}" else if (config.athleteId.isNotBlank()) "ID: ${config.athleteId}" else "Akun Terhubung",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color(0xFF34C759).copy(alpha = 0.18f),
+                                ) {
+                                    Text(
+                                        text = s.connectedStatus,
+                                        color = Color(0xFF248A3D),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    )
+                                }
                             }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = config.athleteName.ifBlank { "Atlet Strava" },
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                )
-                                Text(
-                                    text = if (config.athleteUsername.isNotBlank()) "@${config.athleteUsername}" else if (config.athleteId.isNotBlank()) "ID: ${config.athleteId}" else "Akun Terhubung",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Google Cloud Sync Status
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Color(0xFF34C759).copy(alpha = 0.18f),
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text(
-                                    text = s.connectedStatus,
-                                    color = Color(0xFF248A3D),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                                Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                )
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CloudDone,
+                                        contentDescription = null,
+                                        tint = BrandPrimary,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Text(
+                                        text = s.stravaSyncedToGoogleBadge,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
                             }
                         }
                     }
@@ -1226,51 +1275,204 @@ private fun StravaConfigModal(
                         Text(s.disconnectButton, color = DangerRed, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     }
                 } else {
-                    // Not connected setup view
+                    // Not connected OAuth setup view
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = Color(0xFFFC4C02).copy(alpha = 0.08f),
                         border = BorderStroke(1.dp, Color(0xFFFC4C02).copy(alpha = 0.25f)),
                     ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = s.stravaLoginWithStrava,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color(0xFFFC4C02),
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = s.stravaOAuthDesc,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                lineHeight = 17.sp,
+                            )
+                        }
+                    }
+
+                    // Primary Button: Login dengan Strava (OAuth flow)
+                    Button(
+                        onClick = {
+                            val redirectUri = "https://www.heula.website/"
+                            val authUrl = onGetAuthUrl(clientIdInput.trim(), redirectUri)
+                            uriHandler.openUri(authUrl)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFC4C02)),
+                        contentPadding = PaddingValues(vertical = 12.dp),
+                    ) {
+                        Icon(
+                            imageVector = HeulaIcons.Strava,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = s.stravaDesc,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            lineHeight = 17.sp,
-                            modifier = Modifier.padding(12.dp),
+                            text = s.stravaLoginWithStrava,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.size(16.dp),
                         )
                     }
 
+                    // Code Exchange Field
                     Text(
-                        text = s.stravaConnectHelp,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 16.sp,
+                        text = s.stravaEnterCodeLabel,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
                     )
-
                     OutlinedTextField(
-                        value = tokenInput,
+                        value = codeInput,
                         onValueChange = {
-                            tokenInput = it
+                            codeInput = it
                             errorMessage = null
                         },
-                        placeholder = { Text(s.stravaTokenPlaceholder, fontSize = 12.sp) },
+                        placeholder = { Text(if (language == AppLanguage.ENGLISH) "Paste authorization code from redirect URL..." else "Tempel kode otorisasi dari redirect...", fontSize = 12.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                     )
 
-                    // Quick connect demo helper
-                    OutlinedButton(
+                    Button(
                         onClick = {
-                            val demoToken = "demo_strava_token"
-                            tokenInput = demoToken
+                            val cleanCode = codeInput.trim()
+                            if (cleanCode.isBlank()) {
+                                errorMessage = if (language == AppLanguage.ENGLISH) "Please enter or paste the authorization code." else "Harap masukkan kode otorisasi."
+                                return@Button
+                            }
                             isConnecting = true
                             errorMessage = null
-                            onConnect(demoToken) { res ->
+                            onExchangeCode(clientIdInput.trim(), clientSecretInput.trim(), cleanCode) { res ->
                                 isConnecting = false
                                 res.onSuccess {
-                                    successMessage = if (language == AppLanguage.ENGLISH) "Connected to Strava!" else "Berhasil terhubung ke Strava!"
+                                    successMessage = if (language == AppLanguage.ENGLISH) "Connected to Strava successfully!" else "Berhasil terhubung ke akun Strava!"
+                                }.onFailure { err ->
+                                    errorMessage = err.message ?: "Gagal menukar kode otorisasi."
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        enabled = !isConnecting && codeInput.isNotBlank(),
+                        contentPadding = PaddingValues(vertical = 10.dp),
+                    ) {
+                        if (isConnecting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = BrandPrimary,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(s.stravaConnecting, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        } else {
+                            Text(
+                                text = s.stravaExchangeCodeBtn,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
+
+                    // Collapsible API Settings (Client ID & Secret)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showApiSettings = !showApiSettings },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = s.stravaApiSettingsTitle,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Icon(
+                                    imageVector = if (showApiSettings) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+
+                            if (showApiSettings) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (language == AppLanguage.ENGLISH) {
+                                        "Configure custom Client ID & Secret from strava.com/settings/api"
+                                    } else {
+                                        "Atur Client ID & Secret kustom dari akun developer strava.com/settings/api"
+                                    },
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 15.sp,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = clientIdInput,
+                                    onValueChange = { clientIdInput = it },
+                                    label = { Text(s.stravaClientIdLabel, fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    singleLine = true,
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                OutlinedTextField(
+                                    value = clientSecretInput,
+                                    onValueChange = { clientSecretInput = it },
+                                    label = { Text(s.stravaClientSecretLabel, fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    singleLine = true,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        onUpdateConfig(config.copy(clientId = clientIdInput.trim(), clientSecret = clientSecretInput.trim()))
+                                        successMessage = if (language == AppLanguage.ENGLISH) "Credentials saved!" else "Kredensial disimpan!"
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                ) {
+                                    Text(if (language == AppLanguage.ENGLISH) "Save Credentials" else "Simpan Kredensial", fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    // Quick Demo Connect
+                    OutlinedButton(
+                        onClick = {
+                            isConnecting = true
+                            errorMessage = null
+                            onConnectWithToken("demo_strava_token") { res ->
+                                isConnecting = false
+                                res.onSuccess {
+                                    successMessage = if (language == AppLanguage.ENGLISH) "Connected to Strava (Demo)!" else "Berhasil terhubung ke Strava (Demo)!"
                                 }.onFailure { err ->
                                     errorMessage = err.message
                                 }
@@ -1287,43 +1489,6 @@ private fun StravaConfigModal(
                             color = BrandPrimary,
                             fontWeight = FontWeight.SemiBold,
                         )
-                    }
-
-                    Button(
-                        onClick = {
-                            val clean = tokenInput.trim()
-                            if (clean.isBlank()) {
-                                errorMessage = if (language == AppLanguage.ENGLISH) "Please enter your Strava access token." else "Harap masukkan access token Strava."
-                                return@Button
-                            }
-                            isConnecting = true
-                            errorMessage = null
-                            onConnect(clean) { res ->
-                                isConnecting = false
-                                res.onSuccess {
-                                    successMessage = if (language == AppLanguage.ENGLISH) "Connected to Strava!" else "Berhasil terhubung ke Strava!"
-                                }.onFailure { err ->
-                                    errorMessage = err.message ?: "Gagal verifikasi token Strava."
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFC4C02)),
-                        enabled = !isConnecting,
-                        contentPadding = PaddingValues(vertical = 12.dp),
-                    ) {
-                        if (isConnecting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = Color.White,
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(s.stravaConnecting, color = Color.White, fontWeight = FontWeight.SemiBold)
-                        } else {
-                            Text(s.connectButton + " ke Strava", color = Color.White, fontWeight = FontWeight.SemiBold)
-                        }
                     }
                 }
 

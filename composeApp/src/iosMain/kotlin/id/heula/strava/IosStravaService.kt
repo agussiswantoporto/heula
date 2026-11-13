@@ -7,6 +7,35 @@ import id.heula.domain.model.StravaConfig
 import id.heula.domain.repository.StravaService
 
 class IosStravaService : StravaService {
+    override fun getAuthorizationUrl(clientId: String, redirectUri: String): String {
+        return "https://www.strava.com/oauth/authorize?client_id=$clientId&response_type=code&redirect_uri=$redirectUri&approval_prompt=auto&scope=activity:write,read"
+    }
+
+    override suspend fun exchangeAuthorizationCode(
+        clientId: String,
+        clientSecret: String,
+        code: String,
+    ): Result<StravaConfig> {
+        return Result.success(
+            StravaConfig(
+                isConnected = true,
+                accessToken = "ios_strava_access_token",
+                refreshToken = "ios_strava_refresh_token",
+                tokenExpiresAt = (kotlinx.datetime.Clock.System.now().toEpochMilliseconds() / 1000L) + 21600,
+                athleteId = "1001",
+                athleteName = "Atlet Strava",
+                athleteUsername = "strava_ios_user",
+                clientId = clientId,
+                clientSecret = clientSecret,
+                autoPostOnFinish = true,
+            )
+        )
+    }
+
+    override suspend fun refreshToken(config: StravaConfig): Result<StravaConfig> {
+        return Result.success(config)
+    }
+
     override suspend fun verifyToken(accessToken: String): Result<StravaAthlete> {
         return Result.success(
             StravaAthlete(

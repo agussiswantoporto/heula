@@ -72,6 +72,40 @@
             y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
         })(window, document, "clarity", "script", "za57e1ucqq");
     </script>
+    <!-- Strava OAuth Redirect Handler -->
+    <script>
+      (function() {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var code = params.get('code');
+          var error = params.get('error');
+          if (code) {
+            window.localStorage.setItem('heula_strava_oauth_code', code);
+            if (window.opener) {
+              try {
+                window.opener.localStorage.setItem('heula_strava_oauth_code', code);
+                window.opener.postMessage({ type: 'strava_oauth_success', code: code }, '*');
+                window.close();
+              } catch (e) {}
+            } else {
+              var cleanUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, cleanUrl);
+            }
+          } else if (error) {
+            window.localStorage.setItem('heula_strava_oauth_error', error);
+            if (window.opener) {
+              try {
+                window.opener.localStorage.setItem('heula_strava_oauth_error', error);
+                window.opener.postMessage({ type: 'strava_oauth_error', error: error }, '*');
+                window.close();
+              } catch (e) {}
+            }
+          }
+        } catch (e) {
+          console.warn('Strava redirect check error:', e);
+        }
+      })();
+    </script>
     <!-- Google Identity Services (GIS) -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
@@ -206,6 +240,87 @@
       };
 
       window.heulaStrava = {
+        openOAuthPopup: function(clientId, redirectUri) {
+          window.localStorage.removeItem('heula_strava_oauth_code');
+          window.localStorage.removeItem('heula_strava_oauth_error');
+          var redirect = redirectUri || window.location.origin + window.location.pathname;
+          var url = 'https://www.strava.com/oauth/authorize?client_id=' + clientId +
+                    '&response_type=code&redirect_uri=' + encodeURIComponent(redirect) +
+                    '&approval_prompt=auto&scope=activity:write,read';
+          var w = 600, h = 750;
+          var left = (window.innerWidth - w) / 2 + window.screenX;
+          var top = (window.innerHeight - h) / 2 + window.screenY;
+          var popup = window.open(url, 'strava_oauth_window', 'width=' + w + ',height=' + h + ',top=' + top + ',left=' + left);
+          if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+            window.location.href = url;
+          }
+        },
+        exchangeCode: function(clientId, clientSecret, code) {
+          window.localStorage.removeItem('heula_strava_exchange_result');
+          fetch('https://www.strava.com/oauth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: parseInt(clientId, 10) || clientId,
+              client_secret: clientSecret,
+              code: code,
+              grant_type: 'authorization_code'
+            })
+          })
+          .then(function(res) {
+            return res.json().then(function(data) {
+              if (!res.ok) throw new Error((data && (data.message || data.error)) ? (data.message || data.error) : ('HTTP ' + res.status));
+              return data;
+            });
+          })
+          .then(function(data) {
+            var athlete = data.athlete || {};
+            var athleteName = ((athlete.firstname || '') + ' ' + (athlete.lastname || '')).trim() || athlete.username || 'Atlet Strava';
+            var res = JSON.stringify({
+              accessToken: data.access_token || '',
+              refreshToken: data.refresh_token || '',
+              tokenExpiresAt: data.expires_at || 0,
+              athleteId: String(athlete.id || ''),
+              athleteName: athleteName,
+              athleteUsername: athlete.username || '',
+              athleteProfileUrl: athlete.profile || ''
+            });
+            window.localStorage.setItem('heula_strava_exchange_result', 'OK:' + res);
+          })
+          .catch(function(err) {
+            window.localStorage.setItem('heula_strava_exchange_result', 'ERR:' + err.message);
+          });
+        },
+        refreshToken: function(clientId, clientSecret, refreshToken) {
+          window.localStorage.removeItem('heula_strava_refresh_result');
+          fetch('https://www.strava.com/oauth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: parseInt(clientId, 10) || clientId,
+              client_secret: clientSecret,
+              refresh_token: refreshToken,
+              grant_type: 'refresh_token'
+            })
+          })
+          .then(function(res) {
+            return res.json().then(function(data) {
+              if (!res.ok) throw new Error((data && (data.message || data.error)) ? (data.message || data.error) : ('HTTP ' + res.status));
+              return data;
+            });
+          })
+          .then(function(data) {
+            var res = JSON.stringify({
+              accessToken: data.access_token || '',
+              refreshToken: data.refresh_token || refreshToken,
+              tokenExpiresAt: data.expires_at || 0
+            });
+            window.localStorage.setItem('heula_strava_refresh_result', 'OK:' + res);
+          })
+          .catch(function(err) {
+            window.localStorage.setItem('heula_strava_refresh_result', 'ERR:' + err.message);
+          });
+        },
         verifyToken: function(token) {
           window.localStorage.removeItem('heula_strava_verify_result');
           fetch('https://www.strava.com/api/v3/athlete', {

@@ -190,6 +190,20 @@ class SyncManager(
         val cloudWaterToday = if (cloud.waterDateEpochDay == todayEpochDay) cloud.waterIntakeMl else 0
         val mergedWater = maxOf(localWaterToday, cloudWaterToday)
 
+        // Smart merge Strava credentials and connection status
+        val mergedStrava = when {
+            local.stravaConfig.isConnected && cloud.stravaConfig.isConnected -> {
+                if (local.stravaConfig.tokenExpiresAt >= cloud.stravaConfig.tokenExpiresAt) local.stravaConfig
+                else cloud.stravaConfig
+            }
+            local.stravaConfig.isConnected -> local.stravaConfig
+            cloud.stravaConfig.isConnected -> cloud.stravaConfig
+            else -> {
+                if (local.stravaConfig.clientId.isNotBlank()) local.stravaConfig
+                else cloud.stravaConfig
+            }
+        }
+
         return local.copy(
             onboarded = onboarded,
             profiling = profiling,
@@ -201,6 +215,7 @@ class SyncManager(
             eatingWindowHours = resolvedEatingHours,
             waterIntakeMl = mergedWater,
             waterDateEpochDay = todayEpochDay,
+            stravaConfig = mergedStrava,
         )
     }
 }

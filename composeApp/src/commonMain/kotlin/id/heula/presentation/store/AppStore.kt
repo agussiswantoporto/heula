@@ -103,14 +103,37 @@ class AppStore(
 
     fun updateStravaConfig(config: StravaConfig) {
         update { copy(stravaConfig = config) }
+        triggerAutoSync()
     }
 
     fun disconnectStrava() {
         update { copy(stravaConfig = StravaConfig(isConnected = false)) }
+        triggerAutoSync()
     }
 
     fun setStravaAutoPost(enabled: Boolean) {
         update { copy(stravaConfig = stravaConfig.copy(autoPostOnFinish = enabled)) }
+        triggerAutoSync()
+    }
+
+    fun getStravaAuthUrl(clientId: String, redirectUri: String): String {
+        return stravaService.getAuthorizationUrl(clientId, redirectUri)
+    }
+
+    fun exchangeStravaCode(
+        clientId: String,
+        clientSecret: String,
+        code: String,
+        onResult: (Result<StravaConfig>) -> Unit = {}
+    ) {
+        scope.launch {
+            val res = stravaService.exchangeAuthorizationCode(clientId, clientSecret, code)
+            res.onSuccess { newConfig ->
+                update { copy(stravaConfig = newConfig) }
+                triggerAutoSync()
+            }
+            onResult(res)
+        }
     }
 
     fun verifyAndConnectStrava(token: String, onResult: (Result<StravaAthlete>) -> Unit = {}) {
@@ -131,6 +154,7 @@ class AppStore(
                     athleteProfileUrl = athlete.profile,
                 )
                 update { copy(stravaConfig = newConfig) }
+                triggerAutoSync()
             }
             onResult(res)
         }
@@ -146,10 +170,28 @@ class AppStore(
                 onResult(Result.failure(IllegalStateException("Strava belum terhubung")))
                 return@launch
             }
-            val res = stravaService.postActivity(config, session)
+
+            // Check if token expired and needs refresh
+            val nowSec = Clock.System.now().toEpochMilliseconds() / 1000L
+            val effectiveConfig = if (config.tokenExpiresAt > 0 && nowSec >= (config.tokenExpiresAt - 300) && config.refreshToken.isNotBlank()) {
+                val refreshRes = stravaService.refreshToken(config)
+                if (refreshRes.isSuccess) {
+                    val refreshed = refreshRes.getOrThrow()
+                    update { copy(stravaConfig = refreshed) }
+                    triggerAutoSync()
+                    refreshed
+                } else {
+                    config
+                }
+            } else {
+                config
+            }
+
+            val res = stravaService.postActivity(effectiveConfig, session)
             res.onSuccess {
                 val now = Clock.System.now().toEpochMilliseconds()
                 update { copy(stravaConfig = stravaConfig.copy(lastPostedAt = now)) }
+                triggerAutoSync()
             }
             onResult(res)
         }
