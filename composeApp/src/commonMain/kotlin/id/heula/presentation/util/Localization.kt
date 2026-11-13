@@ -136,6 +136,12 @@ data class Strings(
     val stravaEnterCodeLabel: String,
     val stravaExchangeCodeBtn: String,
     val stravaSyncedToGoogleBadge: String,
+    val stravaCallbackDomainLabel: String,
+    val stravaCopyDomainBtn: String,
+    val stravaDomainCopied: String,
+    val stravaOpenDevPortalBtn: String,
+    val stravaMissingCredentialsAlert: String,
+    val stravaCallbackDomainGuide: String,
 
     // Metabolic Journal & Allowed Drinks
     val metabolismJournalTitle: String,
@@ -293,6 +299,12 @@ val IndonesianStrings = Strings(
     stravaEnterCodeLabel = "Kode Otorisasi (Dari Redirect)",
     stravaExchangeCodeBtn = "Tukarkan Kode & Sambungkan",
     stravaSyncedToGoogleBadge = "Tersimpan di Cloud Sync Google",
+    stravaCallbackDomainLabel = "Authorization Callback Domain Strava",
+    stravaCopyDomainBtn = "Salin Domain",
+    stravaDomainCopied = "Domain berhasil disalin!",
+    stravaOpenDevPortalBtn = "Buka strava.com/settings/api",
+    stravaMissingCredentialsAlert = "Masukkan Client ID dan Client Secret dari akun developer Strava Anda terlebih dahulu.",
+    stravaCallbackDomainGuide = "Di halaman strava.com/settings/api, pastikan kolom 'Authorization Callback Domain' diisi sama persis dengan domain di atas (tanpa https:// dan tanpa slash).",
 
     // Metabolic Journal & Allowed Drinks
     metabolismJournalTitle = "Jurnal Metabolisme Tubuh",
@@ -450,6 +462,12 @@ val EnglishStrings = Strings(
     stravaEnterCodeLabel = "Authorization Code (From Redirect)",
     stravaExchangeCodeBtn = "Exchange Code & Connect",
     stravaSyncedToGoogleBadge = "Saved in Google Cloud Sync",
+    stravaCallbackDomainLabel = "Strava Authorization Callback Domain",
+    stravaCopyDomainBtn = "Copy Domain",
+    stravaDomainCopied = "Domain copied to clipboard!",
+    stravaOpenDevPortalBtn = "Open strava.com/settings/api",
+    stravaMissingCredentialsAlert = "Please enter your Client ID and Client Secret from your Strava API settings first.",
+    stravaCallbackDomainGuide = "In your strava.com/settings/api page, ensure the 'Authorization Callback Domain' field is filled with the exact domain above (no https://, no slash).",
 
     // Metabolic Journal & Allowed Drinks
     metabolismJournalTitle = "Body Metabolism Journal",

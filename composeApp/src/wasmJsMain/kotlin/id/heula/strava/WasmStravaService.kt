@@ -47,11 +47,52 @@ external fun jsStravaPostActivity(token: String, jsonPayload: String)
 @JsFun("() => { return window.localStorage.getItem('heula_strava_post_result') || ''; }")
 external fun getJsStravaPostResult(): String
 
+@JsFun("() => { return window.location.origin + window.location.pathname; }")
+external fun jsGetLocationOriginAndPath(): String
+
+@JsFun("() => { return window.location.hostname || 'heula.website'; }")
+external fun jsGetLocationHostname(): String
+
+@JsFun("(value) => { return encodeURIComponent(value); }")
+external fun jsEncodeURIComponent(value: String): String
+
+@JsFun("(text) => { try { if (navigator.clipboard) { navigator.clipboard.writeText(text); } } catch(e){} }")
+external fun jsCopyToClipboard(text: String)
+
 class WasmStravaService : StravaService {
     private val json = Json { ignoreUnknownKeys = true }
 
     override fun getAuthorizationUrl(clientId: String, redirectUri: String): String {
-        return "https://www.strava.com/oauth/authorize?client_id=$clientId&response_type=code&redirect_uri=$redirectUri&approval_prompt=auto&scope=activity:write,read"
+        val cleanClientId = clientId.trim()
+        val cleanRedirect = redirectUri.trim().ifBlank { getDefaultRedirectUri() }
+        val encodedRedirect = jsEncodeURIComponent(cleanRedirect)
+        return "https://www.strava.com/oauth/authorize?client_id=$cleanClientId&response_type=code&redirect_uri=$encodedRedirect&approval_prompt=auto&scope=activity:write,read"
+    }
+
+    override fun getDefaultRedirectUri(): String {
+        val raw = jsGetLocationOriginAndPath().trim()
+        return if (raw.isNotBlank()) raw else "https://www.heula.website/"
+    }
+
+    override fun getDefaultCallbackDomain(): String {
+        val host = jsGetLocationHostname().trim()
+        return if (host.isNotBlank()) host else "heula.website"
+    }
+
+    override suspend fun getPendingOAuthCode(): String? {
+        val code = getJsStravaOAuthCode().trim()
+        return if (code.isNotBlank()) code else null
+    }
+
+    override fun clearPendingOAuthCode() {
+        clearJsStravaOAuthCode()
+    }
+
+    override fun launchOAuthFlow(clientId: String, redirectUri: String): Boolean {
+        val cleanClientId = clientId.trim()
+        val cleanRedirect = redirectUri.trim().ifBlank { getDefaultRedirectUri() }
+        jsStravaOpenOAuthPopup(cleanClientId, cleanRedirect)
+        return true
     }
 
     override suspend fun exchangeAuthorizationCode(

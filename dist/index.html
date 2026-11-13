@@ -105,6 +105,18 @@
           console.warn('Strava redirect check error:', e);
         }
       })();
+
+      window.addEventListener('message', function(event) {
+        try {
+          if (event && event.data) {
+            if (event.data.type === 'strava_oauth_success' && event.data.code) {
+              window.localStorage.setItem('heula_strava_oauth_code', event.data.code);
+            } else if (event.data.type === 'strava_oauth_error' && event.data.error) {
+              window.localStorage.setItem('heula_strava_oauth_error', event.data.error);
+            }
+          }
+        } catch (e) {}
+      });
     </script>
     <!-- Google Identity Services (GIS) -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -243,14 +255,18 @@
         openOAuthPopup: function(clientId, redirectUri) {
           window.localStorage.removeItem('heula_strava_oauth_code');
           window.localStorage.removeItem('heula_strava_oauth_error');
-          var redirect = redirectUri || window.location.origin + window.location.pathname;
-          var url = 'https://www.strava.com/oauth/authorize?client_id=' + clientId +
-                    '&response_type=code&redirect_uri=' + encodeURIComponent(redirect) +
+          var cleanClientId = (clientId || '').trim();
+          var cleanRedirect = (redirectUri || '').trim() || (window.location.origin + window.location.pathname);
+          var url = 'https://www.strava.com/oauth/authorize?client_id=' + cleanClientId +
+                    '&response_type=code&redirect_uri=' + encodeURIComponent(cleanRedirect) +
                     '&approval_prompt=auto&scope=activity:write,read';
           var w = 600, h = 750;
           var left = (window.innerWidth - w) / 2 + window.screenX;
           var top = (window.innerHeight - h) / 2 + window.screenY;
-          var popup = window.open(url, 'strava_oauth_window', 'width=' + w + ',height=' + h + ',top=' + top + ',left=' + left);
+          var popup = null;
+          try {
+            popup = window.open(url, 'strava_oauth_window', 'width=' + w + ',height=' + h + ',top=' + top + ',left=' + left);
+          } catch (e) {}
           if (!popup || popup.closed || typeof popup.closed === 'undefined') {
             window.location.href = url;
           }

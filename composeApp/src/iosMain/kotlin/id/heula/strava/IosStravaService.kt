@@ -8,7 +8,9 @@ import id.heula.domain.repository.StravaService
 
 class IosStravaService : StravaService {
     override fun getAuthorizationUrl(clientId: String, redirectUri: String): String {
-        return "https://www.strava.com/oauth/authorize?client_id=$clientId&response_type=code&redirect_uri=$redirectUri&approval_prompt=auto&scope=activity:write,read"
+        val cleanClientId = clientId.trim()
+        val cleanRedirectUri = redirectUri.trim().ifBlank { getDefaultRedirectUri() }
+        return "https://www.strava.com/oauth/authorize?client_id=$cleanClientId&response_type=code&redirect_uri=$cleanRedirectUri&approval_prompt=auto&scope=activity:write,read"
     }
 
     override suspend fun exchangeAuthorizationCode(

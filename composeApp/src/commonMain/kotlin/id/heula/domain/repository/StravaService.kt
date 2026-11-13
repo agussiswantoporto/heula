@@ -22,4 +22,14 @@ interface StravaService {
         config: StravaConfig,
         session: FastingSession,
     ): Result<StravaActivityResult>
+
+    fun getDefaultRedirectUri(): String = "https://www.heula.website/"
+
+    fun getDefaultCallbackDomain(): String = "heula.website"
+
+    suspend fun getPendingOAuthCode(): String? = null
+
+    fun clearPendingOAuthCode() {}
+
+    fun launchOAuthFlow(clientId: String, redirectUri: String): Boolean = false
 }

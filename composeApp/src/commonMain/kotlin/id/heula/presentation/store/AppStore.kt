@@ -120,6 +120,17 @@ class AppStore(
         return stravaService.getAuthorizationUrl(clientId, redirectUri)
     }
 
+    fun getDefaultStravaRedirectUri(): String = stravaService.getDefaultRedirectUri()
+
+    fun getDefaultStravaCallbackDomain(): String = stravaService.getDefaultCallbackDomain()
+
+    suspend fun getPendingStravaCode(): String? = stravaService.getPendingOAuthCode()
+
+    fun clearPendingStravaCode() = stravaService.clearPendingOAuthCode()
+
+    fun launchStravaOAuth(clientId: String, redirectUri: String): Boolean =
+        stravaService.launchOAuthFlow(clientId, redirectUri)
+
     fun exchangeStravaCode(
         clientId: String,
         clientSecret: String,
@@ -217,6 +228,20 @@ class AppStore(
             delay(1200L) // Wait for initial local settings to load
             if (currentUser.value != null && syncState.value != SyncState.SYNCING) {
                 authRepository.syncAllData()
+            }
+        }
+        // Auto-check pending Strava OAuth code on startup
+        scope.launch {
+            delay(1500L)
+            val pendingCode = stravaService.getPendingOAuthCode()
+            if (!pendingCode.isNullOrBlank()) {
+                val config = _settings.value.stravaConfig
+                val clientId = config.clientId.trim()
+                val clientSecret = config.clientSecret.trim()
+                if (clientId.isNotBlank() && clientSecret.isNotBlank()) {
+                    stravaService.clearPendingOAuthCode()
+                    exchangeStravaCode(clientId, clientSecret, pendingCode)
+                }
             }
         }
         // Background cross-device sync loop: polls every 25 seconds for counter & session updates
