@@ -72,6 +72,7 @@ fun ProfileScreen(
 
     var isSyncingHealth by remember { mutableStateOf(false) }
     var showStravaConfigModal by remember { mutableStateOf(false) }
+    var healthInfoDialogMessage by remember { mutableStateOf<String?>(null) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showPlanSelector by remember { mutableStateOf(false) }
     var showCustomHoursDialog by remember { mutableStateOf(false) }
@@ -340,8 +341,19 @@ fun ProfileScreen(
                 s = s,
                 onConfigureStrava = { showStravaConfigModal = true },
                 onConnectHealth = {
-                    store.requestHealthAuthorization {
-                        store.syncHealthData()
+                    if (healthStatus.platformType == HealthPlatformType.UNSUPPORTED) {
+                        healthInfoDialogMessage = if (settings.language == AppLanguage.ENGLISH) {
+                            "Google Health Connect and Apple Health are native on-device health systems for Android and iOS.\n\nWeb browsers cannot access local device health databases due to platform security and privacy boundaries.\n\nThis integration will automatically sync your fasting, hydration, and weight data when you open the Heula app on Android or iOS."
+                        } else {
+                            "Google Health Connect dan Apple Health adalah sistem kesehatan bawaan perangkat seluler (Android & iOS).\n\nBrowser web tidak diizinkan mengakses data kesehatan lokal HP demi alasan keamanan dan privasi medis.\n\nIntegrasi ini akan otomatis aktif dan menyinkronkan data puasa, minum air, dan berat badan Anda saat menggunakan aplikasi Heula versi Android atau iOS."
+                        }
+                    } else {
+                        store.requestHealthAuthorization { res ->
+                            res.onSuccess { store.syncHealthData() }
+                            res.onFailure { err ->
+                                healthInfoDialogMessage = err.message ?: "Gagal menghubungkan layanan kesehatan."
+                            }
+                        }
                     }
                 },
                 onSyncHealth = {
@@ -700,6 +712,44 @@ fun ProfileScreen(
         )
     }
 
+    healthInfoDialogMessage?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { healthInfoDialogMessage = null },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(text = "📱", fontSize = 20.sp)
+                    Text(
+                        text = if (settings.language == AppLanguage.ENGLISH) "Mobile App Integration" else "Khusus Aplikasi Mobile",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = msg,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { healthInfoDialogMessage = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Text(text = if (settings.language == AppLanguage.ENGLISH) "Understood" else "Mengerti", fontWeight = FontWeight.Bold)
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
+    }
+
     ConfirmDialog(
         show = showResetDialog,
         title = if (settings.language == AppLanguage.ENGLISH) "Reset all data?" else "Reset semua data?",
@@ -854,6 +904,7 @@ private fun ConnectedServicesCard(
                 icon = HeulaIcons.Strava,
                 iconTint = Color(0xFFFC4C02),
                 iconBg = Color(0xFFFC4C02).copy(alpha = 0.12f),
+                accentColor = Color(0xFFFC4C02),
                 isConnected = stravaConfig.isConnected,
                 isComingSoon = !stravaConfig.isConnected,
                 badgeText = if (!stravaConfig.isConnected) s.comingSoon else null,
@@ -870,19 +921,24 @@ private fun ConnectedServicesCard(
             // 2. Google Health Connect / Google Fit
             val isHealthConnectConnected = healthStatus.state == HealthPermissionState.CONNECTED &&
                 healthStatus.platformType == HealthPlatformType.HEALTH_CONNECT
+            val isHealthUnsupported = healthStatus.platformType == HealthPlatformType.UNSUPPORTED
             IntegrationRowItem(
                 name = "Google Health Connect",
-                subtitle = s.healthConnectSectionDesc,
+                subtitle = if (language == AppLanguage.ENGLISH) "Sync body weight & water intake" else "Sinkronkan berat badan & minum air",
                 icon = HeulaIcons.HealthConnect,
                 iconTint = Color(0xFF00897B),
                 iconBg = Color(0xFF00897B).copy(alpha = 0.12f),
+                accentColor = Color(0xFF00897B),
                 isConnected = isHealthConnectConnected,
+                badgeText = if (isHealthUnsupported) (if (language == AppLanguage.ENGLISH) "Android" else "Di Android") else null,
                 s = s,
                 onClick = {
                     if (isHealthConnectConnected) onSyncHealth() else onConnectHealth()
                 },
                 actionButtonText = if (isHealthConnectConnected) {
                     if (isSyncingHealth) "..." else s.healthConnectSyncBtn
+                } else if (isHealthUnsupported) {
+                    "Info"
                 } else {
                     s.connectButton
                 },
@@ -898,17 +954,21 @@ private fun ConnectedServicesCard(
                 healthStatus.platformType == HealthPlatformType.APPLE_HEALTH
             IntegrationRowItem(
                 name = "Apple Health",
-                subtitle = if (language == AppLanguage.ENGLISH) "Sync fasting, hydration & weight records" else "Sinkronkan puasa, timbangan & air ke Apple Health",
+                subtitle = if (language == AppLanguage.ENGLISH) "Sync fasting, hydration & weight" else "Sinkronkan puasa, timbangan & air",
                 icon = HeulaIcons.AppleHealth,
                 iconTint = Color(0xFFFF2D55),
                 iconBg = Color(0xFFFF2D55).copy(alpha = 0.12f),
+                accentColor = Color(0xFFFF2D55),
                 isConnected = isAppleHealthConnected,
+                badgeText = if (isHealthUnsupported) (if (language == AppLanguage.ENGLISH) "iOS" else "Di iOS") else null,
                 s = s,
                 onClick = {
                     if (isAppleHealthConnected) onSyncHealth() else onConnectHealth()
                 },
                 actionButtonText = if (isAppleHealthConnected) {
                     if (isSyncingHealth) "..." else s.healthConnectSyncBtn
+                } else if (isHealthUnsupported) {
+                    "Info"
                 } else {
                     s.connectButton
                 },
@@ -930,6 +990,7 @@ private fun IntegrationRowItem(
     actionButtonText: String,
     isComingSoon: Boolean = false,
     badgeText: String? = null,
+    accentColor: Color = BrandPrimary,
 ) {
     Row(
         modifier = Modifier
@@ -960,6 +1021,13 @@ private fun IntegrationRowItem(
             }
 
             Column(modifier = Modifier.weight(1f)) {
+                val displayBadge = when {
+                    isConnected -> s.connectedStatus
+                    badgeText != null -> badgeText
+                    isComingSoon -> s.comingSoon
+                    else -> null
+                }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -971,44 +1039,42 @@ private fun IntegrationRowItem(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
 
-                    val badgeColor = when {
-                        isConnected -> Color(0xFF34C759).copy(alpha = 0.15f)
-                        isComingSoon -> Color(0xFFFC4C02).copy(alpha = 0.12f)
-                        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
-                    }
-                    val dotColor = when {
-                        isConnected -> Color(0xFF34C759)
-                        isComingSoon -> Color(0xFFFC4C02)
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    }
-                    val textColor = when {
-                        isConnected -> Color(0xFF248A3D)
-                        isComingSoon -> Color(0xFFFC4C02)
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                    val displayBadge = badgeText ?: if (isConnected) s.connectedStatus else s.notConnectedStatus
+                    if (displayBadge != null) {
+                        val badgeColor = when {
+                            isConnected -> Color(0xFF34C759).copy(alpha = 0.15f)
+                            else -> accentColor.copy(alpha = 0.12f)
+                        }
+                        val dotColor = when {
+                            isConnected -> Color(0xFF34C759)
+                            else -> accentColor
+                        }
+                        val textColor = when {
+                            isConnected -> Color(0xFF248A3D)
+                            else -> accentColor
+                        }
 
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = badgeColor,
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = badgeColor,
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(5.dp)
-                                    .clip(CircleShape)
-                                    .background(dotColor)
-                            )
-                            Text(
-                                text = displayBadge,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = textColor,
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(CircleShape)
+                                        .background(dotColor)
+                                )
+                                Text(
+                                    text = displayBadge,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = textColor,
+                                )
+                            }
                         }
                     }
                 }
@@ -1018,7 +1084,8 @@ private fun IntegrationRowItem(
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 15.sp,
-                    maxLines = 2,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
         }
@@ -1031,13 +1098,11 @@ private fun IntegrationRowItem(
             colors = ButtonDefaults.buttonColors(
                 containerColor = when {
                     isConnected -> MaterialTheme.colorScheme.surfaceVariant
-                    isComingSoon -> Color(0xFFFC4C02).copy(alpha = 0.12f)
-                    else -> BrandPrimary.copy(alpha = 0.15f)
+                    else -> accentColor.copy(alpha = 0.12f)
                 },
                 contentColor = when {
                     isConnected -> MaterialTheme.colorScheme.onSurface
-                    isComingSoon -> Color(0xFFFC4C02)
-                    else -> BrandPrimary
+                    else -> accentColor
                 },
             ),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
@@ -1070,16 +1135,6 @@ private fun StravaConfigModal(
     onTestPost: ((Result<StravaActivityResult>) -> Unit) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val uriHandler = LocalUriHandler.current
-    val clipboardManager = LocalClipboardManager.current
-
-    var clientIdInput by remember { mutableStateOf(config.clientId) }
-    var clientSecretInput by remember { mutableStateOf(config.clientSecret) }
-    var showClientSecret by remember { mutableStateOf(false) }
-    var redirectUriInput by remember { mutableStateOf(defaultRedirectUri) }
-    var codeInput by remember { mutableStateOf("") }
-    var showAdvanced by remember { mutableStateOf(false) }
-
     var isConnecting by remember { mutableStateOf(false) }
     var isTestingPost by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -1093,8 +1148,8 @@ private fun StravaConfigModal(
                 kotlinx.coroutines.delay(1000L)
                 val pendingCode = onCheckPendingCode()
                 if (!pendingCode.isNullOrBlank()) {
-                    val cId = clientIdInput.trim().ifBlank { config.clientId.trim() }
-                    val cSec = clientSecretInput.trim().ifBlank { config.clientSecret.trim() }
+                    val cId = config.clientId.trim()
+                    val cSec = config.clientSecret.trim()
                     if (cId.isNotBlank() && cSec.isNotBlank()) {
                         onClearPendingCode()
                         isConnecting = true
@@ -1430,242 +1485,6 @@ private fun StravaConfigModal(
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                         )
-                    }
-
-                    // Optional / Advanced Developer Configuration (Collapsible)
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { showAdvanced = !showAdvanced },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(
-                                    text = if (language == AppLanguage.ENGLISH) "Developer / Manual Setup (Optional)" else "Mode Pengembang / Setup Manual (Opsional)",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                Icon(
-                                    imageVector = if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-
-                            if (showAdvanced) {
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                // Step 1: Callback Domain Guide Card
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFFFC4C02).copy(alpha = 0.08f),
-                                    border = BorderStroke(1.dp, Color(0xFFFC4C02).copy(alpha = 0.25f)),
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text(
-                                            text = "1. " + s.stravaCallbackDomainLabel,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
-                                            color = Color(0xFFFC4C02),
-                                        )
-                                        Text(
-                                            text = s.stravaCallbackDomainGuide,
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            lineHeight = 16.sp,
-                                        )
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = MaterialTheme.colorScheme.surface,
-                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
-                                            modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                            ) {
-                                                Text(
-                                                    text = defaultCallbackDomain,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 13.sp,
-                                                    color = Color(0xFFFC4C02),
-                                                )
-                                                FilledTonalButton(
-                                                    onClick = {
-                                                        clipboardManager.setText(AnnotatedString(defaultCallbackDomain))
-                                                        successMessage = s.stravaDomainCopied
-                                                    },
-                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                                    shape = RoundedCornerShape(6.dp),
-                                                ) {
-                                                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(13.dp))
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                    Text(s.stravaCopyDomainBtn, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                                }
-                                            }
-                                        }
-                                        OutlinedButton(
-                                            onClick = { uriHandler.openUri("https://www.strava.com/settings/api") },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(8.dp),
-                                            contentPadding = PaddingValues(vertical = 6.dp),
-                                            border = BorderStroke(1.dp, Color(0xFFFC4C02).copy(alpha = 0.4f)),
-                                        ) {
-                                            Text(s.stravaOpenDevPortalBtn, fontSize = 11.sp, color = Color(0xFFFC4C02), fontWeight = FontWeight.SemiBold)
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = Color(0xFFFC4C02), modifier = Modifier.size(13.dp))
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Step 2: Client ID & Secret
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text(
-                                            text = "2. " + s.stravaApiSettingsTitle,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
-                                        )
-                                        OutlinedTextField(
-                                            value = clientIdInput,
-                                            onValueChange = {
-                                                clientIdInput = it
-                                                errorMessage = null
-                                            },
-                                            label = { Text(s.stravaClientIdLabel, fontSize = 11.sp) },
-                                            placeholder = { Text("Client ID dari strava.com/settings/api", fontSize = 11.sp) },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(10.dp),
-                                            singleLine = true,
-                                        )
-                                        OutlinedTextField(
-                                            value = clientSecretInput,
-                                            onValueChange = {
-                                                clientSecretInput = it
-                                                errorMessage = null
-                                            },
-                                            label = { Text(s.stravaClientSecretLabel, fontSize = 11.sp) },
-                                            placeholder = { Text("Client Secret dari Strava", fontSize = 11.sp) },
-                                            visualTransformation = if (showClientSecret) VisualTransformation.None else PasswordVisualTransformation(),
-                                            trailingIcon = {
-                                                IconButton(onClick = { showClientSecret = !showClientSecret }) {
-                                                    Icon(
-                                                        imageVector = if (showClientSecret) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(18.dp),
-                                                    )
-                                                }
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(10.dp),
-                                            singleLine = true,
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Primary Button: Login dengan Strava (OAuth flow)
-                                Button(
-                                    onClick = {
-                                        val cId = clientIdInput.trim()
-                                        val cSec = clientSecretInput.trim()
-                                        if (cId.isBlank() || cSec.isBlank()) {
-                                            errorMessage = s.stravaMissingCredentialsAlert
-                                            return@Button
-                                        }
-                                        errorMessage = null
-                                        onUpdateConfig(config.copy(clientId = cId, clientSecret = cSec))
-                                        val launched = onLaunchOAuth(cId, redirectUriInput.trim())
-                                        if (!launched) {
-                                            val authUrl = onGetAuthUrl(cId, redirectUriInput.trim())
-                                            uriHandler.openUri(authUrl)
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFC4C02)),
-                                    contentPadding = PaddingValues(vertical = 12.dp),
-                                    enabled = !isConnecting,
-                                ) {
-                                    if (isConnecting) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp,
-                                            color = Color.White,
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(s.stravaConnecting, color = Color.White, fontWeight = FontWeight.Bold)
-                                    } else {
-                                        Icon(
-                                            imageVector = HeulaIcons.Strava,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = s.stravaLoginWithStrava,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp,
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                            contentDescription = null,
-                                            tint = Color.White.copy(alpha = 0.8f),
-                                            modifier = Modifier.size(16.dp),
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Quick Demo Connect
-                                OutlinedButton(
-                                    onClick = {
-                                        isConnecting = true
-                                        errorMessage = null
-                                        onConnectWithToken("demo_strava_token") { res ->
-                                            isConnecting = false
-                                            res.onSuccess {
-                                                successMessage = if (language == AppLanguage.ENGLISH) "Connected to Strava (Demo)!" else "Berhasil terhubung ke Strava (Demo)!"
-                                            }.onFailure { err ->
-                                                errorMessage = err.message
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
-                                    contentPadding = PaddingValues(vertical = 8.dp),
-                                ) {
-                                    Text(
-                                        text = "⚡ " + s.stravaQuickDemo,
-                                        fontSize = 12.sp,
-                                        color = BrandPrimary,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
 
