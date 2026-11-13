@@ -3,4 +3,3 @@ User-agent: *
 Allow: /
 
 Sitemap: https://www.heula.website/sitemap.xml
-Sitemap: https://heula.website/sitemap.xml
