@@ -1,0 +1,11 @@
+# Robots.txt for Heula - Teman Puasa Berkala
+# Website: https://heula.website
+
+User-agent: *
+Allow: /
+
+# Host
+Host: https://heula.website
+
+# Sitemaps
+Sitemap: https://heula.website/sitemap.xml

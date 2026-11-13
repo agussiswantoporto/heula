@@ -142,6 +142,13 @@ data class Strings(
     val stravaOpenDevPortalBtn: String,
     val stravaMissingCredentialsAlert: String,
     val stravaCallbackDomainGuide: String,
+    val comingSoon: String,
+    val comingSoonBtn: String,
+    val stravaComingSoonDesc: String,
+    val stravaComingSoonModalTitle: String,
+    val stravaComingSoonModalDesc: String,
+    val stravaFreeNote: String,
+    val closeBtn: String,
 
     // Metabolic Journal & Allowed Drinks
     val metabolismJournalTitle: String,
@@ -305,6 +312,13 @@ val IndonesianStrings = Strings(
     stravaOpenDevPortalBtn = "Buka strava.com/settings/api",
     stravaMissingCredentialsAlert = "Masukkan Client ID dan Client Secret dari akun developer Strava Anda terlebih dahulu.",
     stravaCallbackDomainGuide = "Di halaman strava.com/settings/api, pastikan kolom 'Authorization Callback Domain' diisi sama persis dengan domain di atas (tanpa https:// dan tanpa slash).",
+    comingSoon = "Segera",
+    comingSoonBtn = "Segera",
+    stravaComingSoonDesc = "Otomatis unggah catatan puasa ke feed komunitas Strava (Segera Hadir).",
+    stravaComingSoonModalTitle = "Strava (Segera Hadir)",
+    stravaComingSoonModalDesc = "Fitur integrasi Strava sedang dipersiapkan dan akan segera aktif! Nantinya setiap kali puasa disudahi, aktivitas puasa kamu bisa langsung diposting ke feed komunitas Strava secara gratis.",
+    stravaFreeNote = "Semua integrasi layanan kesehatan di Heula (Google Health Connect, Apple Health) 100% gratis tanpa biaya langganan apapun.",
+    closeBtn = "Tutup",
 
     // Metabolic Journal & Allowed Drinks
     metabolismJournalTitle = "Jurnal Metabolisme Tubuh",
@@ -468,6 +482,13 @@ val EnglishStrings = Strings(
     stravaOpenDevPortalBtn = "Open strava.com/settings/api",
     stravaMissingCredentialsAlert = "Please enter your Client ID and Client Secret from your Strava API settings first.",
     stravaCallbackDomainGuide = "In your strava.com/settings/api page, ensure the 'Authorization Callback Domain' field is filled with the exact domain above (no https://, no slash).",
+    comingSoon = "Up Coming",
+    comingSoonBtn = "Up Coming",
+    stravaComingSoonDesc = "Automatically upload fasting sessions to your Strava feed (Up Coming).",
+    stravaComingSoonModalTitle = "Strava (Up Coming)",
+    stravaComingSoonModalDesc = "Strava integration is currently in preparation and will be available in an upcoming update! Your completed fasting sessions will automatically sync to your Strava feed for free.",
+    stravaFreeNote = "All health integrations in Heula (Google Health Connect, Apple Health) are 100% free with zero subscription fees.",
+    closeBtn = "Close",
 
     // Metabolic Journal & Allowed Drinks
     metabolismJournalTitle = "Body Metabolism Journal",
