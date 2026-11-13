@@ -1,6 +1,8 @@
 package id.heula.presentation.screen.profile
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -9,6 +11,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
@@ -51,9 +55,11 @@ fun ProfileScreen(
     val syncState by store.syncState.collectAsState()
     val lastSyncedAt by store.lastSyncedAt.collectAsState()
     val healthStatus by store.healthStatus.collectAsState()
+    val stravaConfig by store.stravaConfig.collectAsState()
     val s = getStrings(settings.language)
 
     var isSyncingHealth by remember { mutableStateOf(false) }
+    var showStravaConfigModal by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showPlanSelector by remember { mutableStateOf(false) }
     var showCustomHoursDialog by remember { mutableStateOf(false) }
@@ -313,18 +319,20 @@ fun ProfileScreen(
                 }
             }
 
-            // Health Integration Card (Apple Health / Health Connect)
-            HealthSyncCard(
+            // Connected Services / Sambungkan Layanan Section (Strava, Google Health, Apple Health)
+            ConnectedServicesCard(
+                stravaConfig = stravaConfig,
                 healthStatus = healthStatus,
                 isSyncingHealth = isSyncingHealth,
                 language = settings.language,
                 s = s,
-                onConnect = {
+                onConfigureStrava = { showStravaConfigModal = true },
+                onConnectHealth = {
                     store.requestHealthAuthorization {
                         store.syncHealthData()
                     }
                 },
-                onSync = {
+                onSyncHealth = {
                     isSyncingHealth = true
                     store.syncHealthData {
                         isSyncingHealth = false
@@ -694,6 +702,39 @@ fun ProfileScreen(
         },
         onDismiss = { showResetDialog = false },
     )
+
+    if (showStravaConfigModal) {
+        StravaConfigModal(
+            config = stravaConfig,
+            language = settings.language,
+            s = s,
+            onConnect = { token, onRes ->
+                store.verifyAndConnectStrava(token, onRes)
+            },
+            onDisconnect = {
+                store.disconnectStrava()
+            },
+            onUpdateConfig = { updated ->
+                store.updateStravaConfig(updated)
+            },
+            onTestPost = { onRes ->
+                val sampleSession = FastingSession(
+                    planId = MethodId.SIXTEEN_EIGHT,
+                    planLabel = "16:8",
+                    targetHours = 16.0,
+                    startMs = kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - 57600000L,
+                    endMs = kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
+                    durationMs = 57600000L,
+                    completed = true,
+                    createdAt = kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
+                    mood = Mood.ENERGIK,
+                    note = "Uji coba posting puasa Heula ke Strava."
+                )
+                store.postSessionToStrava(sampleSession, onRes)
+            },
+            onDismiss = { showStravaConfigModal = false },
+        )
+    }
 }
 
 fun formatLastSynced(timestamp: Long?, now: Long, language: AppLanguage): String {
@@ -719,55 +760,45 @@ fun formatLastSynced(timestamp: Long?, now: Long, language: AppLanguage): String
 }
 
 @Composable
-private fun HealthSyncCard(
+private fun ConnectedServicesCard(
+    stravaConfig: StravaConfig,
     healthStatus: HealthSyncStatus,
     isSyncingHealth: Boolean,
     language: AppLanguage,
     s: Strings,
-    onConnect: () -> Unit,
-    onSync: () -> Unit,
+    onConfigureStrava: () -> Unit,
+    onConnectHealth: () -> Unit,
+    onSyncHealth: () -> Unit,
 ) {
-    val platformTitle = when (healthStatus.platformType) {
-        HealthPlatformType.APPLE_HEALTH -> "Apple Health"
-        HealthPlatformType.HEALTH_CONNECT -> "Google Health Connect"
-        HealthPlatformType.UNSUPPORTED -> s.healthConnectSectionTitle
-    }
-
-    val platformIcon = when (healthStatus.platformType) {
-        HealthPlatformType.APPLE_HEALTH -> HeulaIcons.AppleHealth
-        HealthPlatformType.HEALTH_CONNECT -> HeulaIcons.HealthConnect
-        HealthPlatformType.UNSUPPORTED -> HeulaIcons.AppleHealth
-    }
-
-    val iconTint = when (healthStatus.platformType) {
-        HealthPlatformType.APPLE_HEALTH -> Color(0xFFFF2D55)
-        HealthPlatformType.HEALTH_CONNECT -> Color(0xFF00897B)
-        HealthPlatformType.UNSUPPORTED -> BrandPrimary
-    }
-
     HeulaCard {
         Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(
-                imageVector = platformIcon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(22.dp),
-            )
-            Text(
-                text = platformTitle,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Link,
+                    contentDescription = null,
+                    tint = BrandPrimary,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = s.integrationsSectionTitle,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = s.healthConnectSectionDesc,
+            text = s.integrationsSectionDesc,
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 18.sp,
@@ -775,91 +806,580 @@ private fun HealthSyncCard(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        if (healthStatus.platformType == HealthPlatformType.UNSUPPORTED) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = s.healthConnectDesktopNote,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 16.sp,
-                )
-            }
-        } else {
-            val isConnected = healthStatus.state == HealthPermissionState.CONNECTED
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // 1. Strava Integration
+            IntegrationRowItem(
+                name = s.stravaTitle,
+                subtitle = if (stravaConfig.isConnected) {
+                    "${s.stravaConnectedAs} ${stravaConfig.athleteName.ifBlank { "Atlet Strava" }}"
+                } else {
+                    s.stravaDesc
+                },
+                icon = HeulaIcons.Strava,
+                iconTint = Color(0xFFFC4C02),
+                iconBg = Color(0xFFFC4C02).copy(alpha = 0.12f),
+                isConnected = stravaConfig.isConnected,
+                s = s,
+                onClick = onConfigureStrava,
+                actionButtonText = if (stravaConfig.isConnected) s.configureButton else s.connectButton,
+            )
 
-            Row(
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                thickness = 1.dp,
+            )
+
+            // 2. Google Health Connect / Google Fit
+            val isHealthConnectConnected = healthStatus.state == HealthPermissionState.CONNECTED &&
+                healthStatus.platformType == HealthPlatformType.HEALTH_CONNECT
+            IntegrationRowItem(
+                name = "Google Health Connect",
+                subtitle = s.healthConnectSectionDesc,
+                icon = HeulaIcons.HealthConnect,
+                iconTint = Color(0xFF00897B),
+                iconBg = Color(0xFF00897B).copy(alpha = 0.12f),
+                isConnected = isHealthConnectConnected,
+                s = s,
+                onClick = {
+                    if (isHealthConnectConnected) onSyncHealth() else onConnectHealth()
+                },
+                actionButtonText = if (isHealthConnectConnected) {
+                    if (isSyncingHealth) "..." else s.healthConnectSyncBtn
+                } else {
+                    s.connectButton
+                },
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                thickness = 1.dp,
+            )
+
+            // 3. Apple Health
+            val isAppleHealthConnected = healthStatus.state == HealthPermissionState.CONNECTED &&
+                healthStatus.platformType == HealthPlatformType.APPLE_HEALTH
+            IntegrationRowItem(
+                name = "Apple Health",
+                subtitle = if (language == AppLanguage.ENGLISH) "Sync fasting, hydration & weight records" else "Sinkronkan puasa, timbangan & air ke Apple Health",
+                icon = HeulaIcons.AppleHealth,
+                iconTint = Color(0xFFFF2D55),
+                iconBg = Color(0xFFFF2D55).copy(alpha = 0.12f),
+                isConnected = isAppleHealthConnected,
+                s = s,
+                onClick = {
+                    if (isAppleHealthConnected) onSyncHealth() else onConnectHealth()
+                },
+                actionButtonText = if (isAppleHealthConnected) {
+                    if (isSyncingHealth) "..." else s.healthConnectSyncBtn
+                } else {
+                    s.connectButton
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun IntegrationRowItem(
+    name: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color,
+    iconBg: Color,
+    isConnected: Boolean,
+    s: Strings,
+    onClick: () -> Unit,
+    actionButtonText: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (isConnected) Color(0xFF34C759).copy(alpha = 0.12f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                    )
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(iconBg),
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = if (isConnected) Icons.Default.Check else Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = if (isConnected) Color(0xFF34C759) else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    text = if (isConnected) s.healthConnectConnected else s.healthConnectNotConnected,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = if (isConnected) Color(0xFF248A3D) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    imageVector = icon,
+                    contentDescription = name,
+                    tint = iconTint,
+                    modifier = Modifier.size(22.dp),
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            if (!isConnected) {
-                HeulaButton(
-                    text = s.healthConnectConnectBtn,
-                    onClick = onConnect,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                OutlinedButton(
-                    onClick = onSync,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = !isSyncingHealth,
-                    contentPadding = PaddingValues(vertical = 10.dp),
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    if (isSyncingHealth) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = BrandPrimary,
+                    Text(
+                        text = name,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isConnected) Color(0xFF34C759).copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(5.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isConnected) Color(0xFF34C759) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                            )
+                            Text(
+                                text = if (isConnected) s.connectedStatus else s.notConnectedStatus,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isConnected) Color(0xFF248A3D) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 15.sp,
+                    maxLines = 2,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Button(
+            onClick = onClick,
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isConnected) MaterialTheme.colorScheme.surfaceVariant
+                else BrandPrimary.copy(alpha = 0.15f),
+                contentColor = if (isConnected) MaterialTheme.colorScheme.onSurface
+                else BrandPrimary,
+            ),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.height(32.dp),
+        ) {
+            Text(
+                text = actionButtonText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StravaConfigModal(
+    config: StravaConfig,
+    language: AppLanguage,
+    s: Strings,
+    onConnect: (String, (Result<StravaAthlete>) -> Unit) -> Unit,
+    onDisconnect: () -> Unit,
+    onUpdateConfig: (StravaConfig) -> Unit,
+    onTestPost: ((Result<StravaActivityResult>) -> Unit) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var tokenInput by remember { mutableStateOf(config.accessToken) }
+    var isConnecting by remember { mutableStateOf(false) }
+    var isTestingPost by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+    var showDisconnectConfirm by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFFC4C02).copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = HeulaIcons.Strava,
+                            contentDescription = "Strava",
+                            tint = Color(0xFFFC4C02),
+                            modifier = Modifier.size(18.dp),
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (language == AppLanguage.ENGLISH) "Syncing Health..." else "Menyinkronkan...",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = BrandPrimary,
+                    }
+                    Text(
+                        text = s.stravaConfigModalTitle,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                    )
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                if (config.isConnected) {
+                    // Connected Athlete Profile Card
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFF34C759).copy(alpha = 0.1f),
+                        border = BorderStroke(1.dp, Color(0xFF34C759).copy(alpha = 0.25f)),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFC4C02)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                val initial = config.athleteName.firstOrNull()?.uppercase() ?: "S"
+                                Text(
+                                    text = initial,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = config.athleteName.ifBlank { "Atlet Strava" },
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                )
+                                Text(
+                                    text = if (config.athleteUsername.isNotBlank()) "@${config.athleteUsername}" else if (config.athleteId.isNotBlank()) "ID: ${config.athleteId}" else "Akun Terhubung",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFF34C759).copy(alpha = 0.18f),
+                            ) {
+                                Text(
+                                    text = s.connectedStatus,
+                                    color = Color(0xFF248A3D),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    // Auto-share switch
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = s.stravaAutoPostOption,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                            )
+                            Text(
+                                text = s.stravaAutoPostDesc,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 15.sp,
+                            )
+                        }
+                        Switch(
+                            checked = config.autoPostOnFinish,
+                            onCheckedChange = { onUpdateConfig(config.copy(autoPostOnFinish = it)) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = Color(0xFFFC4C02),
+                                checkedBorderColor = Color.Transparent,
+                            ),
                         )
-                    } else {
+                    }
+
+                    // Activity Type Info
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
                         Text(
-                            text = s.healthConnectSyncBtn,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            text = if (language == AppLanguage.ENGLISH) "Activity Type on Strava" else "Jenis Aktivitas di Strava",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                        ) {
+                            Text(
+                                text = config.defaultActivityType.ifBlank { "Workout" },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFC4C02),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
+                    }
+
+                    // Test Post Button
+                    OutlinedButton(
+                        onClick = {
+                            isTestingPost = true
+                            errorMessage = null
+                            successMessage = null
+                            onTestPost { res ->
+                                isTestingPost = false
+                                res.onSuccess {
+                                    successMessage = s.stravaPostSuccess
+                                }.onFailure { err ->
+                                    errorMessage = "${s.stravaPostFailed}: ${err.message}"
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isTestingPost,
+                        border = BorderStroke(1.dp, Color(0xFFFC4C02).copy(alpha = 0.5f)),
+                    ) {
+                        if (isTestingPost) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFFFC4C02),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (language == AppLanguage.ENGLISH) "Posting sample..." else "Mengunggah contoh...", color = Color(0xFFFC4C02), fontSize = 13.sp)
+                        } else {
+                            Icon(
+                                imageVector = HeulaIcons.Strava,
+                                contentDescription = null,
+                                tint = Color(0xFFFC4C02),
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(s.stravaTestPost, color = Color(0xFFFC4C02), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
+                    }
+
+                    // Disconnect Button
+                    TextButton(
+                        onClick = { showDisconnectConfirm = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(s.disconnectButton, color = DangerRed, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    }
+                } else {
+                    // Not connected setup view
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFFC4C02).copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, Color(0xFFFC4C02).copy(alpha = 0.25f)),
+                    ) {
+                        Text(
+                            text = s.stravaDesc,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = 17.sp,
+                            modifier = Modifier.padding(12.dp),
+                        )
+                    }
+
+                    Text(
+                        text = s.stravaConnectHelp,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 16.sp,
+                    )
+
+                    OutlinedTextField(
+                        value = tokenInput,
+                        onValueChange = {
+                            tokenInput = it
+                            errorMessage = null
+                        },
+                        placeholder = { Text(s.stravaTokenPlaceholder, fontSize = 12.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                    )
+
+                    // Quick connect demo helper
+                    OutlinedButton(
+                        onClick = {
+                            val demoToken = "demo_strava_token"
+                            tokenInput = demoToken
+                            isConnecting = true
+                            errorMessage = null
+                            onConnect(demoToken) { res ->
+                                isConnecting = false
+                                res.onSuccess {
+                                    successMessage = if (language == AppLanguage.ENGLISH) "Connected to Strava!" else "Berhasil terhubung ke Strava!"
+                                }.onFailure { err ->
+                                    errorMessage = err.message
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                    ) {
+                        Text(
+                            text = "⚡ " + s.stravaQuickDemo,
+                            fontSize = 12.sp,
                             color = BrandPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            val clean = tokenInput.trim()
+                            if (clean.isBlank()) {
+                                errorMessage = if (language == AppLanguage.ENGLISH) "Please enter your Strava access token." else "Harap masukkan access token Strava."
+                                return@Button
+                            }
+                            isConnecting = true
+                            errorMessage = null
+                            onConnect(clean) { res ->
+                                isConnecting = false
+                                res.onSuccess {
+                                    successMessage = if (language == AppLanguage.ENGLISH) "Connected to Strava!" else "Berhasil terhubung ke Strava!"
+                                }.onFailure { err ->
+                                    errorMessage = err.message ?: "Gagal verifikasi token Strava."
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFC4C02)),
+                        enabled = !isConnecting,
+                        contentPadding = PaddingValues(vertical = 12.dp),
+                    ) {
+                        if (isConnecting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(s.stravaConnecting, color = Color.White, fontWeight = FontWeight.SemiBold)
+                        } else {
+                            Text(s.connectButton + " ke Strava", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                if (!errorMessage.isNullOrBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = errorMessage ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            modifier = Modifier.padding(10.dp),
+                        )
+                    }
+                }
+
+                if (!successMessage.isNullOrBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF34C759).copy(alpha = 0.15f),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = successMessage ?: "",
+                            color = Color(0xFF248A3D),
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(10.dp),
                         )
                     }
                 }
             }
-        }
+        },
+        confirmButton = {},
+        dismissButton = {},
+        shape = RoundedCornerShape(22.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+    )
+
+    if (showDisconnectConfirm) {
+        ConfirmDialog(
+            show = showDisconnectConfirm,
+            title = s.stravaDisconnectConfirm,
+            body = if (language == AppLanguage.ENGLISH) "This will remove your Strava access token and stop auto-sharing fasting records to Strava." else "Koneksi ke akun Strava akan dicabut dan puasa kamu tidak akan otomatis diposting lagi ke Strava.",
+            confirmText = s.disconnectButton,
+            dismissText = s.cancel,
+            isDanger = true,
+            onConfirm = {
+                onDisconnect()
+                showDisconnectConfirm = false
+            },
+            onDismiss = { showDisconnectConfirm = false },
+        )
     }
 }

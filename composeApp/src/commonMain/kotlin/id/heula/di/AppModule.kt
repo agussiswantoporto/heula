@@ -48,6 +48,7 @@ val appModule = module {
             authRepository = get(),
             healthSyncService = get(),
             shareExporter = get(),
+            stravaService = get(),
             scope = get(),
         )
     }

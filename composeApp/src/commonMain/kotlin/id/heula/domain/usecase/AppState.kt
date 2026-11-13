@@ -19,6 +19,7 @@ data class AppSettings(
     val waterDateEpochDay: Long = 0,
     val language: AppLanguage = AppLanguage.INDONESIAN,
     val lastTab: ScreenTab = ScreenTab.HOME,
+    val stravaConfig: StravaConfig = StravaConfig(),
 )
 
 @Serializable

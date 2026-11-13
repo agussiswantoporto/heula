@@ -63,9 +63,18 @@ fun HomeScreen(
     val settings by store.settings.collectAsState()
     val activeFast by store.activeFast.collectAsState()
     val sessions by store.sessions.collectAsState()
+    val stravaConfig by store.stravaConfig.collectAsState()
     val s = getStrings(settings.language)
 
     var currentTimeMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
+    var stravaFeedbackMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(stravaFeedbackMessage) {
+        if (stravaFeedbackMessage != null) {
+            delay(4500)
+            stravaFeedbackMessage = null
+        }
+    }
 
     LaunchedEffect(activeFast) {
         while (true) {
@@ -248,6 +257,36 @@ fun HomeScreen(
                 )
             }
         }
+
+        stravaFeedbackMessage?.let { msg ->
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = if (msg.contains("Gagal") || msg.contains("Failed")) MaterialTheme.colorScheme.errorContainer else Color(0xFFFC4C02),
+                shadowElevation = 8.dp,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(
+                        imageVector = HeulaIcons.Strava,
+                        contentDescription = null,
+                        tint = if (msg.contains("Gagal") || msg.contains("Failed")) MaterialTheme.colorScheme.error else Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = msg,
+                        color = if (msg.contains("Gagal") || msg.contains("Failed")) MaterialTheme.colorScheme.onErrorContainer else Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                    )
+                }
+            }
+        }
     }
 
     if (showFinishFastModal && activeFast != null) {
@@ -257,8 +296,9 @@ fun HomeScreen(
             durationMs = elapsedMs,
             targetHours = activeFast!!.targetHours,
             isCompleted = elapsedMs >= targetMs,
+            stravaConfig = stravaConfig,
             s = s,
-            onConfirm = { mood, note ->
+            onConfirm = { mood, note, shareToStrava ->
                 val session = FastingSession(
                     planId = activeFast!!.planId,
                     planLabel = activeFast!!.planLabel,
@@ -272,6 +312,15 @@ fun HomeScreen(
                     note = note
                 )
                 store.stopFast(currentTimeMs, mood, note)
+                if (shareToStrava && stravaConfig.isConnected) {
+                    store.postSessionToStrava(session) { res ->
+                        res.onSuccess {
+                            stravaFeedbackMessage = s.stravaPostSuccess
+                        }.onFailure { err ->
+                            stravaFeedbackMessage = "${s.stravaPostFailed}: ${err.message}"
+                        }
+                    }
+                }
                 showFinishFastModal = false
                 sessionToShare = session
                 playZenGongSound()
@@ -1022,12 +1071,14 @@ private fun FinishFastModal(
     durationMs: Long,
     targetHours: Double,
     isCompleted: Boolean,
+    stravaConfig: StravaConfig,
     s: id.heula.presentation.util.Strings,
-    onConfirm: (Mood?, String?) -> Unit,
+    onConfirm: (Mood?, String?, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selectedMood by remember { mutableStateOf<Mood?>(null) }
     var noteText by remember { mutableStateOf("") }
+    var shareToStrava by remember { mutableStateOf(stravaConfig.isConnected && stravaConfig.autoPostOnFinish) }
 
     val totalHours = durationMs / 3600000
     val totalMins = (durationMs % 3600000) / 60000
@@ -1113,11 +1164,75 @@ private fun FinishFastModal(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                 )
+
+                // Strava Share Checkbox (Active when Strava is connected)
+                if (stravaConfig.isConnected) {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFFC4C02).copy(alpha = 0.08f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFC4C02).copy(alpha = 0.3f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { shareToStrava = !shareToStrava },
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFFFC4C02).copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = HeulaIcons.Strava,
+                                        contentDescription = "Strava",
+                                        tint = Color(0xFFFC4C02),
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = s.stravaShareCheckbox,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Text(
+                                        text = s.stravaShareCheckboxDesc,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        lineHeight = 15.sp,
+                                    )
+                                }
+                            }
+                            Checkbox(
+                                checked = shareToStrava,
+                                onCheckedChange = { shareToStrava = it },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = Color(0xFFFC4C02),
+                                    checkmarkColor = Color.White,
+                                ),
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(selectedMood, noteText.ifBlank { null }) },
+                onClick = { onConfirm(selectedMood, noteText.ifBlank { null }, shareToStrava) },
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
             ) {

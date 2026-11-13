@@ -293,6 +293,34 @@ object HeulaIcons {
         }.build()
     }
 
+    // Strava Iconic Brand Icon
+    val Strava: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Strava",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color(0xFFFC4C02))) {
+                moveTo(15.387f, 17.944f)
+                lineToRelative(-2.089f, -4.116f)
+                horizontalLineToRelative(-3.065f)
+                lineTo(15.387f, 24.0f)
+                lineToRelative(5.15f, -10.172f)
+                horizontalLineToRelative(-3.066f)
+                close()
+                moveTo(8.379f, 12.345f)
+                lineToRelative(2.836f, 5.598f)
+                horizontalLineToRelative(4.172f)
+                lineTo(10.463f, 0.0f)
+                lineTo(2.469f, 15.827f)
+                horizontalLineToRelative(4.172f)
+                close()
+            }
+        }.build()
+    }
+
     // Flame / Fat Burning Icon (iOS Apple HIG style)
     val Flame: ImageVector by lazy {
         ImageVector.Builder(

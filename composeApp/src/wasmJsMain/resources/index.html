@@ -205,6 +205,66 @@
         }
       };
 
+      window.heulaStrava = {
+        verifyToken: function(token) {
+          window.localStorage.removeItem('heula_strava_verify_result');
+          fetch('https://www.strava.com/api/v3/athlete', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          })
+          .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function(data) {
+            var athlete = JSON.stringify({
+              id: data.id || 0,
+              firstname: data.firstname || '',
+              lastname: data.lastname || '',
+              username: data.username || '',
+              profile: data.profile || ''
+            });
+            window.localStorage.setItem('heula_strava_verify_result', 'OK:' + athlete);
+          })
+          .catch(function(err) {
+            window.localStorage.setItem('heula_strava_verify_result', 'ERR:' + err.message);
+          });
+        },
+        postActivity: function(token, jsonPayload) {
+          window.localStorage.removeItem('heula_strava_post_result');
+          try {
+            var bodyObj = JSON.parse(jsonPayload);
+            fetch('https://www.strava.com/api/v3/activities', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(bodyObj)
+            })
+            .then(function(res) {
+              if (!res.ok) throw new Error('HTTP ' + res.status);
+              return res.json();
+            })
+            .then(function(data) {
+              var result = JSON.stringify({
+                id: data.id || 0,
+                name: data.name || '',
+                elapsedTime: data.elapsed_time || 0,
+                type: data.type || 'Workout',
+                startDate: data.start_date || '',
+                webUrl: 'https://www.strava.com/activities/' + data.id
+              });
+              window.localStorage.setItem('heula_strava_post_result', 'OK:' + result);
+            })
+            .catch(function(err) {
+              window.localStorage.setItem('heula_strava_post_result', 'ERR:' + err.message);
+            });
+          } catch (e) {
+            window.localStorage.setItem('heula_strava_post_result', 'ERR:' + e.message);
+          }
+        }
+      };
+
       window.heulaShareImage = {
         renderCanvas: function(session, config) {
           var isStory = !config || config.aspectRatio !== 'SQUARE';

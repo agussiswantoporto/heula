@@ -7,6 +7,7 @@ import id.heula.domain.model.*
 import id.heula.domain.repository.AuthRepository
 import id.heula.domain.repository.HealthSyncService
 import id.heula.domain.repository.ShareExporter
+import id.heula.domain.repository.StravaService
 import id.heula.domain.usecase.AppSettings
 import id.heula.domain.usecase.toActiveFast
 import id.heula.domain.usecase.toSerializable
@@ -24,6 +25,7 @@ class AppStore(
     private val authRepository: AuthRepository,
     private val healthSyncService: HealthSyncService,
     private val shareExporter: ShareExporter,
+    private val stravaService: StravaService,
     private val scope: CoroutineScope,
 ) {
     private val _settings = MutableStateFlow(AppSettings())
@@ -33,6 +35,9 @@ class AppStore(
     val syncState: StateFlow<SyncState> = authRepository.syncState
     val lastSyncedAt: StateFlow<Long?> = authRepository.lastSyncedAt
     val healthStatus: StateFlow<HealthSyncStatus> = healthSyncService.status
+    val stravaConfig: StateFlow<StravaConfig> = settings
+        .map { it.stravaConfig }
+        .stateIn(scope, SharingStarted.Eagerly, StravaConfig())
 
     val activeFast: StateFlow<ActiveFast?> = settings
         .map { it.activeFast?.toActiveFast() }
@@ -94,6 +99,60 @@ class AppStore(
 
     suspend fun generateSharePreview(session: FastingSession, config: ShareCustomization): androidx.compose.ui.graphics.ImageBitmap? {
         return shareExporter.generatePreviewBitmap(session, config)
+    }
+
+    fun updateStravaConfig(config: StravaConfig) {
+        update { copy(stravaConfig = config) }
+    }
+
+    fun disconnectStrava() {
+        update { copy(stravaConfig = StravaConfig(isConnected = false)) }
+    }
+
+    fun setStravaAutoPost(enabled: Boolean) {
+        update { copy(stravaConfig = stravaConfig.copy(autoPostOnFinish = enabled)) }
+    }
+
+    fun verifyAndConnectStrava(token: String, onResult: (Result<StravaAthlete>) -> Unit = {}) {
+        scope.launch {
+            val cleanToken = token.trim()
+            if (cleanToken.isBlank()) {
+                onResult(Result.failure(IllegalArgumentException("Access token Strava tidak boleh kosong")))
+                return@launch
+            }
+            val res = stravaService.verifyToken(cleanToken)
+            res.onSuccess { athlete ->
+                val newConfig = _settings.value.stravaConfig.copy(
+                    isConnected = true,
+                    accessToken = cleanToken,
+                    athleteId = athlete.id.toString(),
+                    athleteName = athlete.fullName,
+                    athleteUsername = athlete.username,
+                    athleteProfileUrl = athlete.profile,
+                )
+                update { copy(stravaConfig = newConfig) }
+            }
+            onResult(res)
+        }
+    }
+
+    fun postSessionToStrava(
+        session: FastingSession,
+        onResult: (Result<StravaActivityResult>) -> Unit = {}
+    ) {
+        scope.launch {
+            val config = _settings.value.stravaConfig
+            if (!config.isConnected || config.accessToken.isBlank()) {
+                onResult(Result.failure(IllegalStateException("Strava belum terhubung")))
+                return@launch
+            }
+            val res = stravaService.postActivity(config, session)
+            res.onSuccess {
+                val now = Clock.System.now().toEpochMilliseconds()
+                update { copy(stravaConfig = stravaConfig.copy(lastPostedAt = now)) }
+            }
+            onResult(res)
+        }
     }
 
     fun triggerAutoSync() {
